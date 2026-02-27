@@ -4,6 +4,9 @@ import { useState } from 'react';
 
 export const AdminPage = () => {
   const [activeTab, setActiveTab] = useState('pending');
+  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+
+  const closeModal = () => setSelectedReport(null);
 
   // 이벤트 제보
   const { data: eventReports, isLoading: isEventLoading } = useQuery({
@@ -59,7 +62,7 @@ export const AdminPage = () => {
           className={`flex-1 p-4 ${activeTab === 'pending' ? 'block' : 'hidden'} lg:block lg:border-r`}
         >
           <h2 className="font-bold mb-4">신규 제보</h2>
-          {/* ✏️ 새로운 제보 없을 때 구현해야함*/}
+          {/* ✏️ 새로운 제보 없을 때 구현해야함 */}
           {allPendingReports.map((report) => {
             return (
               <div
@@ -89,7 +92,10 @@ export const AdminPage = () => {
                 </a>
 
                 {/* 검토 버튼 */}
-                <button className="shrink-0 px-4 py-2 bg-black text-white rounded-xl text-xs font-bold whitespace-nowrap active:scale-95 transition-transform">
+                <button
+                  className="shrink-0 px-4 py-2 bg-black text-white rounded-xl text-xs font-bold whitespace-nowrap active:scale-95 transition-transform"
+                  onClick={() => setSelectedReport(report)}
+                >
                   검토하기
                 </button>
               </div>
@@ -140,6 +146,62 @@ export const AdminPage = () => {
           })}
         </section>
       </div>
+      {/* 모달 */}
+      {selectedReport && (
+        // 배경 블러 처리
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+          {/* 모달 부분 */}
+          <div className="bg-white w-110 max-x-md rounded--[32px] shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in duration-300">
+            {/* 상단 */}
+            <div className="p-6 pb-4">
+              <div className="flex justify-between items-start mb-2">
+                <span
+                  className={`text-[10px] font-bold px-2 py-1 rounded-lg ${
+                    selectedReport.type === 'event'
+                      ? 'bg-green-500 text-white'
+                      : 'bg-orange-500 text-white'
+                  }`}
+                >
+                  {selectedReport.type === 'event'
+                    ? '🍜 이벤트'
+                    : '📢 영업변동'}
+                </span>
+                <button onClick={closeModal} className="text-gray-400 text-xl">
+                  ✕
+                </button>
+              </div>
+              <div className="flex gap-3">
+                <h2 className="text-2xl font-black text-gray-900">
+                  {selectedReport.shop_name}
+                </h2>
+                <a
+                  href={selectedReport.source_url}
+                  target="_blank"
+                  className="text-xl text-blue-600 underline mt-1 block"
+                >
+                  link
+                </a>
+              </div>
+            </div>
+            {/* 바디 */}
+            <div className="px-6 py-2 flex-1">
+              <label>...</label>
+            </div>
+            {/* 액션 */}
+            <div className="p-6 flex gap-2">
+              <button className="w-full py-4 bg-green-500 text-white rounded-2xl font-bold active:scale-95 transition-transform">
+                승인
+              </button>
+              <button className="w-full py-4 bg-gray-500 text-gray-200 rounded-2xl font-bold active:scale-95 transition-transform">
+                중복
+              </button>
+              <button className="w-full py-4 bg-red-500 text-white rounded-2xl font-bold active:scale-95 transition-transform">
+                거절
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -156,3 +218,21 @@ const getStatusColor = (status: string) => {
       return 'bg-white';
   }
 };
+
+interface BaseReport {
+  id: string;
+  shop_name: string;
+  source_url: string;
+  status: 'pending' | 'approved' | 'duplicate' | 'rejected';
+  created_at: string;
+}
+
+interface EventReport extends BaseReport {
+  type: 'event';
+}
+
+interface ClosingReport extends BaseReport {
+  type: 'closing';
+}
+
+type Report = EventReport | ClosingReport;

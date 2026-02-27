@@ -113,6 +113,84 @@ export const AdminPage = () => {
     setShopResults((data as Shop[]) || []);
   };
 
+  const handleApprove = async () => {
+    if (!selectedReport) return;
+
+    // 1. 필수값 방어 (유효성 검사)
+    if (!formData.shop_id) {
+      alert('가게를 매핑해주세요!');
+      return;
+    }
+    if (!formData.imageFile) {
+      alert('스크린샷을 업로드해주세요!');
+      return;
+    }
+
+    try {
+      // supabase storage에 스크린샷 이미지 업로드
+      const fileExt = formData.imageFile.name.split('.').pop();
+      // 파일명이 안 겹치도록 현재시간+랜덤문자열 조합
+      const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('proof-images')
+        .upload(fileName, formData.imageFile);
+
+      if (uploadError)
+        throw new Error(`이미지 업로드 실패: ${uploadError.message}`);
+
+      // 업로드된 이미지의 public url 가져오기
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from('proof-images').getPublicUrl(fileName);
+
+      // ramen_events 테이블에 최종 데이터 insert
+      const { error: insertError } = await supabase
+        .from('ramen_events')
+        .insert({
+          shop_id: formData.shop_id,
+          report_id: selectedReport.id,
+          menu_name: formData.menu_name || null,
+          proof_image_url: publicUrl,
+          source_url: formData.source_url,
+          starts_at: formData.starts_at,
+          ends_at: formData.ends_at,
+          status_type: formData.status_type,
+          description: formData.description || null,
+        });
+
+      if (insertError) throw new Error(`생성 실패: ${insertError.message}`);
+
+      // 원본 제보(reports) 상태를 'approved'로 변경
+      const targetTable =
+        selectedReport.type === 'event' ? 'event_reports' : 'closing_reports';
+      const { error: updateError } = await supabase
+        .from(targetTable)
+        .update({ status: 'approved' })
+        .eq('id', selectedReport.id);
+
+      if (updateError)
+        throw new Error(`상태 업데이트 실패: ${updateError.message}`);
+
+      // 성공 처리 및 화면 갱신
+      alert('🎉 성공적으로 게시되었습니다!');
+
+      // React Query로 리스트 즉시 새로고침
+      queryClient.invalidateQueries({ queryKey: ['event_reports'] });
+      queryClient.invalidateQueries({ queryKey: ['closing_reports'] });
+
+      closeModal();
+    } catch (error: unknown) {
+      console.error('승인 처리 중 에러 발생:', error);
+
+      if (error instanceof Error) {
+        alert(error.message);
+      } else {
+        alert('알 수 없는 오류가 발생했습니다.');
+      }
+    }
+  };
+
   return (
     // 모바일 - 액티브 탭으로 pending/done에 따라 한 쪽만 보여줌
     // 데스크탑 - 가로로 모두 펼침
@@ -449,7 +527,10 @@ export const AdminPage = () => {
 
             {/* 하단 액션 버튼 (높이 및 여백 축소) */}
             <div className="p-4 border-t bg-white">
-              <button className="w-full py-4 bg-green-500 text-white rounded-xl font-bold active:scale-95 transition-transform mb-2">
+              <button
+                onClick={handleApprove}
+                className="w-full py-4 bg-green-500 text-white rounded-xl font-bold active:scale-95 transition-transform mb-2"
+              >
                 승인 및 게시하기
               </button>
               <div className="flex gap-2">

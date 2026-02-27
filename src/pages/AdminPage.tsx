@@ -113,7 +113,7 @@ export const AdminPage = () => {
     setShopResults((data as Shop[]) || []);
   };
 
-  const handleApprove = async () => {
+  const handleReviewApprove = async () => {
     if (!selectedReport) return;
 
     // 1. 필수값 방어 (유효성 검사)
@@ -183,6 +183,39 @@ export const AdminPage = () => {
     } catch (error: unknown) {
       console.error('승인 처리 중 에러 발생:', error);
 
+      if (error instanceof Error) {
+        alert(error.message);
+      } else {
+        alert('알 수 없는 오류가 발생했습니다.');
+      }
+    }
+  };
+
+  const handleReviewStatus = async (newStatus: 'duplicate' | 'rejected') => {
+    if (!selectedReport) return;
+
+    const actionName = newStatus === 'duplicate' ? '중복' : '거절';
+    if (!window.confirm(`이 제보를 ${actionName} 처리하시겠습니까?`)) return;
+
+    try {
+      const targetTable =
+        selectedReport.type === 'event' ? 'event_reports' : 'closing_reports';
+
+      const { error: updateError } = await supabase
+        .from(targetTable)
+        .update({ status: newStatus })
+        .eq('id', selectedReport.id);
+
+      if (updateError)
+        throw new Error(`상태 업데이트 실패: ${updateError.message}`);
+
+      alert(`✅ ${actionName} 처리가 완료되었습니다.`);
+
+      queryClient.invalidateQueries({ queryKey: ['event_reports'] });
+      queryClient.invalidateQueries({ queryKey: ['closing_reports'] });
+      closeModal();
+    } catch (error: unknown) {
+      console.error(`${actionName} 처리 중 에러 발생:`, error);
       if (error instanceof Error) {
         alert(error.message);
       } else {
@@ -528,16 +561,22 @@ export const AdminPage = () => {
             {/* 하단 액션 버튼 (높이 및 여백 축소) */}
             <div className="p-4 border-t bg-white">
               <button
-                onClick={handleApprove}
+                onClick={handleReviewApprove}
                 className="w-full py-4 bg-green-500 text-white rounded-xl font-bold active:scale-95 transition-transform mb-2"
               >
                 승인 및 게시하기
               </button>
               <div className="flex gap-2">
-                <button className="flex-1 py-3 bg-gray-500 text-white rounded-xl font-bold active:scale-95 transition-transform text-sm">
+                <button
+                  onClick={() => handleReviewStatus('duplicate')}
+                  className="flex-1 py-3 bg-gray-500 text-white rounded-xl font-bold active:scale-95 transition-transform text-sm"
+                >
                   중복
                 </button>
-                <button className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold active:scale-95 transition-transform text-sm">
+                <button
+                  onClick={() => handleReviewStatus('rejected')}
+                  className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold active:scale-95 transition-transform text-sm"
+                >
                   거절
                 </button>
               </div>

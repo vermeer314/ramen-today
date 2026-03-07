@@ -1,22 +1,32 @@
 import { supabase } from '../lib/supabase';
 
-//이벤트 제보
 export const fetchEventReports = async () => {
   const { data, error } = await supabase
     .from('event_reports')
     .select('*')
-    .order('created_at', { ascending: false }); //최신순 정렬
+    .order('created_at', { ascending: false });
 
   if (error) throw error;
   return data;
 };
 
-//영업 변동 제보
 export const fetchClosingReports = async () => {
   const { data, error } = await supabase
     .from('closing_reports')
     .select('*')
     .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data;
+};
+
+export const fetchActiveEventReportIds = async () => {
+  const today = new Date().toISOString().split('T')[0];
+
+  const { data, error } = await supabase
+    .from('ramen_events')
+    .select('report_id')
+    .gte('ends_at', today);
 
   if (error) throw error;
   return data;

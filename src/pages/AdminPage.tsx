@@ -4,7 +4,7 @@ import {
   fetchClosingReports,
   fetchActiveEventReportIds,
 } from '../api/reports';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { ChevronRight } from 'lucide-react';
 
@@ -60,6 +60,8 @@ export const AdminPage = () => {
     queryFn: fetchActiveEventReportIds,
   });
 
+  const activeReportIds = activeEvents?.map((item) => item.report_id) || [];
+
   const events = eventReports?.map((r) => ({ ...r, type: 'event' })) || [];
   const closings =
     closingReports?.map((r) => ({ ...r, type: 'closing' })) || [];
@@ -78,31 +80,23 @@ export const AdminPage = () => {
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
     );
 
-  // ✨ 핵심: Live(게시 중) 필터링 로직 완벽 적용
-  const filteredProcessedReports = allProcessedReports.filter((report) => {
-    if (doneFilter === 'all') return true;
+  // 게시 중 필터링
+  const filteredProcessedReports = useMemo(() => {
+    return allProcessedReports.filter((report) => {
+      if (doneFilter === 'all') return true;
 
-    if (doneFilter === 'live') {
-      if (report.status !== 'approved') return false;
-
-      const events = report.ramen_events;
-      let endsAt = '';
-
-      if (Array.isArray(events) && events.length > 0) {
-        endsAt = events[0].ends_at;
-      } else if (events && !Array.isArray(events)) {
-        endsAt = events.ends_at;
+      if (doneFilter === 'live') {
+        if (report.status !== 'approved') return false;
+        return activeReportIds.includes(report.id);
       }
 
-      return endsAt ? endsAt >= getTodayString() : false;
-    }
-
-    if (doneFilter === 'approved') return report.status === 'approved';
-    if (doneFilter === 'rejected')
-      return report.status === 'rejected' || report.status === 'duplicate';
-    if (doneFilter === 'canceled') return report.status === 'canceled';
-    return true;
-  });
+      if (doneFilter === 'approved') return report.status === 'approved';
+      if (doneFilter === 'rejected')
+        return report.status === 'rejected' || report.status === 'duplicate';
+      if (doneFilter === 'canceled') return report.status === 'canceled';
+      return true;
+    });
+  }, [allProcessedReports, doneFilter, activeReportIds]);
 
   const handleOpenModal = (report: Report) => {
     setSelectedReport(report);
@@ -439,7 +433,6 @@ export const AdminPage = () => {
           className={`flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 min-h-0 flex-col ${activeTab === 'pending' ? 'flex' : 'hidden'} lg:flex`}
         >
           <div className="shrink-0 p-4 md:p-5 border-b border-gray-100 flex justify-between items-center bg-white rounded-t-2xl z-10">
-            {/* ✨ 수정: 🚨 대기 중인 제보 헤더와 뱃지 적용 */}
             <h2 className="font-bold text-gray-900 flex items-center gap-2">
               🚨 대기 중인 제보
               {allPendingReports.length > 0 && (
@@ -456,7 +449,6 @@ export const AdminPage = () => {
             </button>
           </div>
 
-          {/* ✨ 수정: 스크롤바 명시화 클래스 적용 */}
           <div className="flex-1 overflow-y-auto p-2 md:p-3 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
             <div className="flex flex-col">
               {allPendingReports.length === 0 && (
@@ -495,7 +487,6 @@ export const AdminPage = () => {
               📋 처리 내역
             </h2>
 
-            {/* ✨ 수정: 5가지 알약 필터 버튼 가로 스크롤 배치 */}
             <div className="flex gap-1.5 shrink-0">
               <button
                 onClick={() => setDoneFilter('live')}
@@ -899,7 +890,6 @@ interface BaseReport {
   source_url: string;
   status: 'pending' | 'approved' | 'duplicate' | 'rejected' | 'canceled';
   created_at: string;
-  ramen_events?: RamenEventJoinData | RamenEventJoinData[] | null;
 }
 
 interface EventReport extends BaseReport {
@@ -914,10 +904,6 @@ interface Shop {
   id: string;
   name: string;
   profile_img_url: string | null;
-}
-
-interface RamenEventJoinData {
-  ends_at: string;
 }
 
 type Report = EventReport | ClosingReport;

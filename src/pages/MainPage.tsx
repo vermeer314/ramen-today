@@ -96,8 +96,13 @@ export const MainPage = () => {
       alert('성공적으로 제보되었습니다! 🍜');
       setIsReportModalOpen(false);
       setReportForm({ type: 'event', shop_name: '', source_url: '' });
-    } catch (err: any) {
-      alert(`제보 실패: ${err.message}`);
+    } catch (err) {
+      if (err instanceof Error) {
+        alert(`제보 실패: ${err.message}`);
+      } else {
+        alert('알 수 없는 오류가 발생했습니다.');
+        console.error('Unexpected error:', err);
+      }
     }
   };
 

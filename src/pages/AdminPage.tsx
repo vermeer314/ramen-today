@@ -1,21 +1,23 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { fetchEventReports, fetchClosingReports } from '../api/reports';
+import {
+  fetchEventReports,
+  fetchClosingReports,
+  fetchActiveEventReportIds,
+} from '../api/reports';
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { ChevronRight } from 'lucide-react';
 
 export const AdminPage = () => {
   const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState('pending');
-  // 모달 상태
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
 
-  // 가게 검색을 위한 상태
   const [shopSearchQuery, setShopSearchQuery] = useState<string>('');
   const [shopResults, setShopResults] = useState<Shop[]>([]);
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
 
-  // 제보 작성 폼 상태
   const [formData, setFormData] = useState({
     shop_id: '',
     source_url: '',
@@ -28,17 +30,34 @@ export const AdminPage = () => {
     imagePreview: '',
   });
 
-  const closeModal = () => setSelectedReport(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
+  const [isDirectCreateMode, setIsDirectCreateMode] = useState(false);
+  const [isViewOnlyMode, setIsViewOnlyMode] = useState(false);
 
-  // 이벤트 제보 쿼리
-  const { data: eventReports, isLoading: isEventLoading } = useQuery({
+  const [doneFilter, setDoneFilter] = useState('live');
+
+  const closeModal = () => {
+    setSelectedReport(null);
+    setIsEditMode(false);
+    setIsDirectCreateMode(false);
+    setIsViewOnlyMode(false);
+    setEditingEventId(null);
+  };
+
+  const { data: eventReports } = useQuery({
     queryKey: ['event_reports'],
     queryFn: fetchEventReports,
   });
-  // 영업 변동 제보 쿼리
-  const { data: closingReports, isLoading: isClosingLoading } = useQuery({
+
+  const { data: closingReports } = useQuery({
     queryKey: ['closing_reports'],
     queryFn: fetchClosingReports,
+  });
+
+  const { data: activeEvents } = useQuery({
+    queryKey: ['active_events'],
+    queryFn: fetchActiveEventReportIds,
   });
 
   const events = eventReports?.map((r) => ({ ...r, type: 'event' })) || [];
@@ -59,17 +78,37 @@ export const AdminPage = () => {
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
     );
 
-  // 검토하기 버튼을 눌렀을 때 실행될 핸들러
+  // ✨ 핵심: Live(게시 중) 필터링 로직 완벽 적용
+  const filteredProcessedReports = allProcessedReports.filter((report) => {
+    if (doneFilter === 'all') return true;
+
+    if (doneFilter === 'live') {
+      if (report.status !== 'approved') return false;
+
+      const events = report.ramen_events;
+      let endsAt = '';
+
+      if (Array.isArray(events) && events.length > 0) {
+        endsAt = events[0].ends_at;
+      } else if (events && !Array.isArray(events)) {
+        endsAt = events.ends_at;
+      }
+
+      return endsAt ? endsAt >= getTodayString() : false;
+    }
+
+    if (doneFilter === 'approved') return report.status === 'approved';
+    if (doneFilter === 'rejected')
+      return report.status === 'rejected' || report.status === 'duplicate';
+    if (doneFilter === 'canceled') return report.status === 'canceled';
+    return true;
+  });
+
   const handleOpenModal = (report: Report) => {
-    // 모달 띄우기
     setSelectedReport(report);
-    // 유저가 입력한 검색어 가져오기
     setShopSearchQuery(report.shop_name);
-    //초기화
     setSelectedShop(null);
     setShopResults([]);
-
-    // 폼 데이터 초기화
     setFormData({
       shop_id: '',
       source_url: report.source_url,
@@ -83,7 +122,69 @@ export const AdminPage = () => {
     });
   };
 
-  // 모달 창 폼 데이터 핸들러
+  const handleEditModal = async (report: Report) => {
+    if (report.status !== 'approved') {
+      alert('승인되어 게시된 제보만 수정할 수 있습니다.');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('ramen_events')
+        .select('*, shops(id, name, profile_img_url)')
+        .eq('report_id', report.id)
+        .single();
+
+      if (error || !data) {
+        alert('등록된 이벤트 정보를 찾을 수 없습니다.');
+        return;
+      }
+
+      setSelectedReport(report);
+      setIsEditMode(true);
+      setEditingEventId(data.id);
+
+      setSelectedShop(data.shops as unknown as Shop);
+      setShopSearchQuery((data.shops as unknown as Shop).name);
+
+      setFormData({
+        shop_id: data.shop_id,
+        source_url: data.source_url || report.source_url,
+        status_type: data.status_type,
+        starts_at: data.starts_at,
+        ends_at: data.ends_at,
+        menu_name: data.menu_name || '',
+        description: data.description || '',
+        imageFile: null,
+        imagePreview: data.proof_image_url,
+      });
+    } catch (err) {
+      console.error(err);
+      alert('데이터를 불러오는 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleDirectCreate = () => {
+    setSelectedReport(null);
+    setIsEditMode(false);
+    setIsDirectCreateMode(true);
+    setEditingEventId(null);
+    setSelectedShop(null);
+    setShopSearchQuery('');
+
+    setFormData({
+      shop_id: '',
+      source_url: '',
+      status_type: 'normal',
+      starts_at: getTodayString(),
+      ends_at: getTodayString(),
+      menu_name: '',
+      description: '',
+      imageFile: null,
+      imagePreview: '',
+    });
+  };
+
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
@@ -93,12 +194,10 @@ export const AdminPage = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // 가게 검색 핸들러
   const handleSearchChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
     setShopSearchQuery(query);
 
-    // 두 글자 이상일 경우에 실행하도록
     if (query.length < 2) {
       setShopResults([]);
       return;
@@ -113,241 +212,411 @@ export const AdminPage = () => {
     setShopResults((data as Shop[]) || []);
   };
 
-  const handleReviewApprove = async () => {
-    if (!selectedReport) return;
+  const handleViewModal = (report: Report) => {
+    setSelectedReport(report);
+    setIsViewOnlyMode(true);
+    setShopSearchQuery(report.shop_name);
+    setFormData({
+      shop_id: '',
+      source_url: report.source_url,
+      status_type: report.type === 'closing' ? 'closed_all' : 'normal',
+      starts_at: getTodayString(),
+      ends_at: getTodayString(),
+      menu_name: '',
+      description: '',
+      imageFile: null,
+      imagePreview: '',
+    });
+  };
 
-    // 1. 필수값 방어 (유효성 검사)
+  const handleDoneRowClick = (report: Report) => {
+    if (report.status === 'approved') {
+      handleEditModal(report);
+    } else {
+      handleViewModal(report);
+    }
+  };
+
+  const handleReviewApprove = async () => {
+    if (!selectedReport && !isDirectCreateMode) return;
     if (!formData.shop_id) {
       alert('가게를 매핑해주세요!');
       return;
     }
-    if (!formData.imageFile) {
+    if (!isEditMode && !formData.imageFile) {
       alert('스크린샷을 업로드해주세요!');
       return;
     }
 
     try {
-      // supabase storage에 스크린샷 이미지 업로드
-      const fileExt = formData.imageFile.name.split('.').pop();
-      // 파일명이 안 겹치도록 현재시간+랜덤문자열 조합
-      const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+      let publicUrl = formData.imagePreview;
 
-      const { error: uploadError } = await supabase.storage
-        .from('proof-images')
-        .upload(fileName, formData.imageFile);
+      if (formData.imageFile) {
+        const fileExt = formData.imageFile.name.split('.').pop();
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
 
-      if (uploadError)
-        throw new Error(`이미지 업로드 실패: ${uploadError.message}`);
+        const { error: uploadError } = await supabase.storage
+          .from('proof-images')
+          .upload(fileName, formData.imageFile);
+        if (uploadError)
+          throw new Error(`이미지 업로드 실패: ${uploadError.message}`);
 
-      // 업로드된 이미지의 public url 가져오기
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from('proof-images').getPublicUrl(fileName);
+        const {
+          data: { publicUrl: newUrl },
+        } = supabase.storage.from('proof-images').getPublicUrl(fileName);
+        publicUrl = newUrl;
+      }
 
-      // ramen_events 테이블에 최종 데이터 insert
-      const { error: insertError } = await supabase
+      const eventData = {
+        shop_id: formData.shop_id,
+        menu_name: formData.menu_name || null,
+        proof_image_url: publicUrl,
+        source_url: formData.source_url,
+        starts_at: formData.starts_at,
+        ends_at: formData.ends_at,
+        status_type: formData.status_type,
+        description: formData.description || null,
+      };
+
+      if (isEditMode) {
+        const { error: updateError } = await supabase
+          .from('ramen_events')
+          .update(eventData)
+          .eq('id', editingEventId);
+        if (updateError) throw new Error(`수정 실패: ${updateError.message}`);
+        alert('🎉 성공적으로 수정되었습니다!');
+      } else if (isDirectCreateMode) {
+        const targetTable =
+          formData.status_type === 'normal'
+            ? 'event_reports'
+            : 'closing_reports';
+
+        const { data: reportData, error: reportError } = await supabase
+          .from(targetTable)
+          .insert({
+            shop_name: selectedShop?.name || '관리자 직접 등록',
+            source_url: formData.source_url,
+            status: 'approved',
+          })
+          .select('id')
+          .single();
+
+        if (reportError)
+          throw new Error(`제보 로그 생성 실패: ${reportError.message}`);
+
+        const { error: insertError } = await supabase
+          .from('ramen_events')
+          .insert({
+            ...eventData,
+            report_id: reportData.id,
+          });
+
+        if (insertError)
+          throw new Error(`직접 등록 실패: ${insertError.message}`);
+        alert('🎉 성공적으로 직접 등록되었습니다!');
+      } else {
+        const { error: insertError } = await supabase
+          .from('ramen_events')
+          .insert({
+            ...eventData,
+            report_id: selectedReport?.id,
+          });
+
+        if (insertError) throw new Error(`생성 실패: ${insertError.message}`);
+
+        const targetTable =
+          selectedReport?.type === 'event'
+            ? 'event_reports'
+            : 'closing_reports';
+
+        const { error: statusError } = await supabase
+          .from(targetTable)
+          .update({
+            status: 'approved',
+            mapped_shop_name: selectedShop?.name,
+          })
+          .eq('id', selectedReport?.id);
+
+        if (statusError)
+          throw new Error(`상태 업데이트 실패: ${statusError.message}`);
+        alert('🎉 성공적으로 게시되었습니다!');
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['event_reports'] });
+      queryClient.invalidateQueries({ queryKey: ['closing_reports'] });
+      queryClient.invalidateQueries({ queryKey: ['active_events'] });
+      closeModal();
+    } catch (error: unknown) {
+      console.error('처리 중 에러 발생:', error);
+      if (error instanceof Error) alert(error.message);
+      else alert('알 수 없는 오류가 발생했습니다.');
+    }
+  };
+
+  const handleDeleteEvent = async () => {
+    if (!selectedReport || !editingEventId) return;
+    if (!window.confirm('이벤트를 정말 취소하고 앱에서 삭제하시겠습니까?'))
+      return;
+
+    try {
+      const { error: deleteError } = await supabase
         .from('ramen_events')
-        .insert({
-          shop_id: formData.shop_id,
-          report_id: selectedReport.id,
-          menu_name: formData.menu_name || null,
-          proof_image_url: publicUrl,
-          source_url: formData.source_url,
-          starts_at: formData.starts_at,
-          ends_at: formData.ends_at,
-          status_type: formData.status_type,
-          description: formData.description || null,
-        });
+        .delete()
+        .eq('id', editingEventId);
+      if (deleteError)
+        throw new Error(`이벤트 삭제 실패: ${deleteError.message}`);
 
-      if (insertError) throw new Error(`생성 실패: ${insertError.message}`);
-
-      // 원본 제보(reports) 상태를 'approved'로 변경
       const targetTable =
         selectedReport.type === 'event' ? 'event_reports' : 'closing_reports';
       const { error: updateError } = await supabase
         .from(targetTable)
-        .update({ status: 'approved' })
+        .update({ status: 'canceled' })
         .eq('id', selectedReport.id);
-
       if (updateError)
         throw new Error(`상태 업데이트 실패: ${updateError.message}`);
 
-      // 성공 처리 및 화면 갱신
-      alert('🎉 성공적으로 게시되었습니다!');
-
-      // React Query로 리스트 즉시 새로고침
+      alert('🗑️ 게시물이 성공적으로 취소/삭제되었습니다.');
       queryClient.invalidateQueries({ queryKey: ['event_reports'] });
       queryClient.invalidateQueries({ queryKey: ['closing_reports'] });
-
       closeModal();
     } catch (error: unknown) {
-      console.error('승인 처리 중 에러 발생:', error);
-
-      if (error instanceof Error) {
-        alert(error.message);
-      } else {
-        alert('알 수 없는 오류가 발생했습니다.');
-      }
+      console.error('삭제 처리 중 에러 발생:', error);
+      if (error instanceof Error) alert(error.message);
+      else alert('알 수 없는 오류가 발생했습니다.');
     }
   };
 
   const handleReviewStatus = async (newStatus: 'duplicate' | 'rejected') => {
     if (!selectedReport) return;
-
     const actionName = newStatus === 'duplicate' ? '중복' : '거절';
     if (!window.confirm(`이 제보를 ${actionName} 처리하시겠습니까?`)) return;
 
     try {
       const targetTable =
         selectedReport.type === 'event' ? 'event_reports' : 'closing_reports';
-
       const { error: updateError } = await supabase
         .from(targetTable)
         .update({ status: newStatus })
         .eq('id', selectedReport.id);
-
       if (updateError)
         throw new Error(`상태 업데이트 실패: ${updateError.message}`);
 
       alert(`✅ ${actionName} 처리가 완료되었습니다.`);
-
       queryClient.invalidateQueries({ queryKey: ['event_reports'] });
       queryClient.invalidateQueries({ queryKey: ['closing_reports'] });
       closeModal();
     } catch (error: unknown) {
       console.error(`${actionName} 처리 중 에러 발생:`, error);
-      if (error instanceof Error) {
-        alert(error.message);
-      } else {
-        alert('알 수 없는 오류가 발생했습니다.');
-      }
+      if (error instanceof Error) alert(error.message);
+      else alert('알 수 없는 오류가 발생했습니다.');
     }
   };
 
   return (
-    // 모바일 - 액티브 탭으로 pending/done에 따라 한 쪽만 보여줌
-    // 데스크탑 - 가로로 모두 펼침
-    <div className="p-4">
-      <h1 className="text-xl font-bold mb-6">관리자 페이지</h1>
-      <div className="flex gap-2 lg:hidden p-4 border-b">
+    <div className="p-4 md:p-6 h-[100dvh] flex flex-col bg-slate-50 overflow-hidden">
+      <h1 className="text-xl md:text-2xl font-black text-gray-900 mb-4 shrink-0">
+        관리자 페이지
+      </h1>
+
+      <div className="flex gap-2 lg:hidden mb-4 shrink-0">
         <button
           onClick={() => setActiveTab('pending')}
-          className={`px-4 py-2 rounded-full text-sm font-bold ${activeTab === 'pending' ? 'bg-black text-white' : 'bg-gray-100 text-gray-400'}`}
+          className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm ${activeTab === 'pending' ? 'bg-gray-900 text-white' : 'bg-white text-gray-400 border border-gray-200'}`}
         >
-          pending
+          신규 제보
         </button>
         <button
           onClick={() => setActiveTab('done')}
-          className={`px-4 py-2 rounded-full text-sm font-bold ${activeTab === 'done' ? 'bg-black text-white' : 'bg-gray-100 text-gray-400'}`}
+          className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm ${activeTab === 'done' ? 'bg-gray-900 text-white' : 'bg-white text-gray-400 border border-gray-200'}`}
         >
-          done
+          처리 내역
         </button>
       </div>
-      <div className="flex flex-col lg:flex-row h-screen">
-        {/* 신규 제보 */}
+
+      <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 lg:gap-6 pb-4">
+        {/* 신규 제보 섹션 */}
         <section
-          className={`flex-1 p-4 ${activeTab === 'pending' ? 'block' : 'hidden'} lg:block lg:border-r`}
+          className={`flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 min-h-0 flex-col ${activeTab === 'pending' ? 'flex' : 'hidden'} lg:flex`}
         >
-          <h2 className="font-bold mb-4">신규 제보</h2>
-          {/* ✏️ 새로운 제보 없을 때 구현해야함 */}
-          {allPendingReports.map((report) => {
-            return (
-              <div
-                key={`${report.type}-${report.id}`}
-                className={`p-3 mb-2 border-2 rounded-2xl flex items-center gap-4 ${report.type === 'event' ? 'border-green-100 bg-green-50' : 'border-orange-100 bg-orange-50'}`}
-              >
-                {/* 태그 */}
-                <span
-                  className={`shrink-0 text-[10px] font-bold px-2 py-1 rounded-lg ${report.type === 'event' ? 'bg-green-500 text-white' : 'bg-orange-500 text-white'}`}
-                >
-                  {report.type === 'event' ? '🍜 이벤트' : '📢 영업변동'}
+          <div className="shrink-0 p-4 md:p-5 border-b border-gray-100 flex justify-between items-center bg-white rounded-t-2xl z-10">
+            {/* ✨ 수정: 🚨 대기 중인 제보 헤더와 뱃지 적용 */}
+            <h2 className="font-bold text-gray-900 flex items-center gap-2">
+              🚨 대기 중인 제보
+              {allPendingReports.length > 0 && (
+                <span className="bg-red-100 text-red-600 px-2 py-0.5 rounded-md text-[11px] font-black">
+                  {allPendingReports.length}건
                 </span>
+              )}
+            </h2>
+            <button
+              onClick={handleDirectCreate}
+              className="shrink-0 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold active:scale-95 transition-all shadow-sm"
+            >
+              + 직접 등록
+            </button>
+          </div>
 
-                {/* 가게 이름 */}
-                <h3 className="font-bold text-sm truncate min-w-0">
-                  {report.shop_name}
-                </h3>
-
-                {/* 원본 링크 */}
-                <a
-                  href={report.source_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="ml-auto *:text-xs text-blue-600 underline shrink-0"
-                >
-                  link
-                </a>
-
-                {/* 검토 버튼 */}
-                <button
-                  className="shrink-0 px-4 py-2 bg-black text-white rounded-xl text-xs font-bold whitespace-nowrap active:scale-95 transition-transform"
+          {/* ✨ 수정: 스크롤바 명시화 클래스 적용 */}
+          <div className="flex-1 overflow-y-auto p-2 md:p-3 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
+            <div className="flex flex-col">
+              {allPendingReports.length === 0 && (
+                <div className="text-center py-10 text-gray-400 text-sm font-bold">
+                  새로운 제보가 없습니다.
+                </div>
+              )}
+              {allPendingReports.map((report) => (
+                <div
+                  key={`${report.type}-${report.id}`}
                   onClick={() => handleOpenModal(report)}
+                  className="flex items-center gap-3 md:gap-6 py-3.5 md:py-5 px-2 md:px-4 border-b border-gray-50 hover:bg-gray-50 active:bg-gray-100 cursor-pointer transition-colors rounded-xl"
                 >
-                  검토하기
-                </button>
-              </div>
-            );
-          })}
+                  <span
+                    className={`shrink-0 w-[68px] md:w-[76px] flex items-center justify-center gap-1 text-[10px] md:text-xs font-black py-1 md:py-1.5 rounded-md ${report.type === 'event' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}
+                  >
+                    <span>{report.type === 'event' ? '🍜' : '📢'}</span>
+                    <span>{report.type === 'event' ? '이벤트' : '변동'}</span>
+                  </span>
+                  <h3 className="font-bold text-sm md:text-base text-gray-900 truncate flex-1">
+                    {report.shop_name}
+                  </h3>
+                  <ChevronRight className="w-[18px] h-[18px] md:w-6 md:h-6 text-gray-300 shrink-0" />
+                </div>
+              ))}
+            </div>
+          </div>
         </section>
 
-        {/* 처리 내역 */}
+        {/* 처리 내역 섹션 */}
         <section
-          className={`flex-1 p-4 ${activeTab === 'done' ? 'block' : 'hidden'} lg:block`}
+          className={`flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 min-h-0 flex-col ${activeTab === 'done' ? 'flex' : 'hidden'} lg:flex`}
         >
-          <h2 className="font-bold mb-4">처리 내역</h2>
-          {allProcessedReports.map((report) => {
-            return (
-              <div
-                key={`${report.type}-${report.id}`}
-                className={`p-3 mb-2 border-2 rounded-2xl flex items-center gap-4 ${getStatusColor(report.status)}`}
+          <div className="shrink-0 p-4 md:p-5 border-b border-gray-100 flex flex-col md:flex-row md:justify-between md:items-center bg-white rounded-t-2xl z-10 gap-3 md:gap-0 overflow-x-auto [&::-webkit-scrollbar]:hidden">
+            <h2 className="font-bold text-gray-900 shrink-0 mr-4 whitespace-nowrap">
+              📋 처리 내역
+            </h2>
+
+            {/* ✨ 수정: 5가지 알약 필터 버튼 가로 스크롤 배치 */}
+            <div className="flex gap-1.5 shrink-0">
+              <button
+                onClick={() => setDoneFilter('live')}
+                className={`px-2.5 py-1 text-[11px] md:text-xs font-bold rounded-md transition-colors ${doneFilter === 'live' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
               >
-                {/* 태그 */}
-                <span
-                  className={`shrink-0 text-[10px] font-bold px-2 py-1 rounded-lg 
-                    ${report.type === 'event' ? 'bg-green-500' : 'bg-orange-500'}`}
-                >
-                  {report.type === 'event' ? '🍜 이벤트' : '📢 영업변동'}
-                </span>
+                게시 중
+              </button>
+              <button
+                onClick={() => setDoneFilter('all')}
+                className={`px-2.5 py-1 text-[11px] md:text-xs font-bold rounded-md transition-colors ${doneFilter === 'all' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+              >
+                전체
+              </button>
+              <button
+                onClick={() => setDoneFilter('approved')}
+                className={`px-2.5 py-1 text-[11px] md:text-xs font-bold rounded-md transition-colors ${doneFilter === 'approved' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+              >
+                승인
+              </button>
+              <button
+                onClick={() => setDoneFilter('rejected')}
+                className={`px-2.5 py-1 text-[11px] md:text-xs font-bold rounded-md transition-colors ${doneFilter === 'rejected' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+              >
+                거절/중복
+              </button>
+              <button
+                onClick={() => setDoneFilter('canceled')}
+                className={`px-2.5 py-1 text-[11px] md:text-xs font-bold rounded-md transition-colors ${doneFilter === 'canceled' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+              >
+                취소
+              </button>
+            </div>
+          </div>
 
-                {/* 가게 이름 */}
-                <h3 className="font-bold text-sm truncate min-w-0">
-                  {report.shop_name}
-                </h3>
+          <div className="flex-1 overflow-y-auto p-2 md:p-3 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
+            <div className="flex flex-col">
+              {filteredProcessedReports.length === 0 && (
+                <div className="text-center py-10 text-gray-400 text-sm font-bold">
+                  해당하는 처리 내역이 없습니다.
+                </div>
+              )}
+              {filteredProcessedReports.map((report) => {
+                const badgeStyle =
+                  report.status === 'approved'
+                    ? 'bg-blue-100 text-blue-700'
+                    : report.status === 'rejected'
+                      ? 'bg-red-100 text-red-700'
+                      : report.status === 'duplicate'
+                        ? 'bg-gray-200 text-gray-700'
+                        : 'bg-gray-100 text-gray-400';
 
-                {/* 원본 링크 */}
-                <a
-                  href={report.source_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="ml-auto *:text-xs text-blue-600 underline shrink-0"
-                >
-                  link
-                </a>
+                const statusInfoMap: Record<
+                  string,
+                  { emoji: string; text: string }
+                > = {
+                  approved: { emoji: '✅', text: '승인' },
+                  rejected: { emoji: '🚫', text: '거절' },
+                  duplicate: { emoji: '🔄', text: '중복' },
+                  canceled: { emoji: '🗑️', text: '취소' },
+                  pending: { emoji: '⏳', text: '대기' },
+                };
+                const statusInfo = statusInfoMap[report.status] || {
+                  emoji: '❓',
+                  text: '알수없음',
+                };
 
-                {/* 검토 버튼 */}
-                <button className="shrink-0 px-4 py-2 bg-black text-white rounded-xl text-xs font-bold whitespace-nowrap active:scale-95 transition-transform">
-                  수정하기
-                </button>
-              </div>
-            );
-          })}
+                return (
+                  <div
+                    key={`${report.type}-${report.id}`}
+                    onClick={() => handleDoneRowClick(report)}
+                    className={`flex items-center gap-3 md:gap-6 py-3.5 md:py-5 px-2 md:px-4 border-b border-gray-50 hover:bg-gray-50 active:bg-gray-100 cursor-pointer transition-colors rounded-xl ${report.status === 'canceled' ? 'opacity-50 grayscale' : ''}`}
+                  >
+                    <span
+                      className={`shrink-0 w-[68px] md:w-[76px] flex items-center justify-center gap-1 text-[10px] md:text-xs font-black py-1 md:py-1.5 rounded-md ${report.type === 'event' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}
+                    >
+                      <span>{report.type === 'event' ? '🍜' : '📢'}</span>
+                      <span>{report.type === 'event' ? '이벤트' : '변동'}</span>
+                    </span>
+
+                    <h3
+                      className={`font-bold text-sm md:text-base truncate flex-1 ${report.status === 'canceled' ? 'line-through text-gray-500' : 'text-gray-900'}`}
+                    >
+                      {report.mapped_shop_name || report.shop_name}
+                    </h3>
+
+                    <span
+                      className={`shrink-0 w-16 md:w-[72px] flex items-center justify-center gap-1 text-[10px] md:text-xs font-bold py-1 md:py-1.5 rounded-md ${badgeStyle}`}
+                    >
+                      <span>{statusInfo.emoji}</span>
+                      <span>{statusInfo.text}</span>
+                    </span>
+
+                    <ChevronRight className="w-[18px] h-[18px] md:w-6 md:h-6 text-gray-300 shrink-0" />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </section>
       </div>
 
       {/* 모달 */}
-      {selectedReport && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
-          <div className="bg-white w-full max-w-md rounded-[28px] shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
-            {/* 상단 헤더 (패딩 축소) */}
-            <div className="p-4 border-b bg-gray-50">
+      {(selectedReport || isDirectCreateMode) && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+          <div className="bg-white w-full max-w-md rounded-[28px] shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200 h-[90dvh] md:h-auto md:max-h-[90dvh]">
+            {/* 상단 헤더 */}
+            <div className="shrink-0 p-4 border-b bg-gray-50">
               <div className="flex justify-between items-start mb-1">
-                <span
-                  className={`text-[10px] font-bold px-2 py-1 rounded-md ${selectedReport.type === 'event' ? 'bg-green-500 text-white' : 'bg-orange-500 text-white'}`}
-                >
-                  {selectedReport.type === 'event'
-                    ? '🍜 이벤트 제보'
-                    : '📢 영업변동 제보'}
-                </span>
+                {isDirectCreateMode ? (
+                  <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-blue-500 text-white">
+                    ✍️ 관리자 직접 등록
+                  </span>
+                ) : (
+                  <span
+                    className={`text-[10px] font-bold px-2 py-1 rounded-md ${selectedReport?.type === 'event' ? 'bg-green-500 text-white' : 'bg-orange-500 text-white'}`}
+                  >
+                    {selectedReport?.type === 'event'
+                      ? '🍜 이벤트 제보'
+                      : '📢 영업변동 제보'}
+                  </span>
+                )}
                 <button
                   onClick={closeModal}
                   className="text-gray-400 text-xl hover:text-black"
@@ -356,7 +625,9 @@ export const AdminPage = () => {
                 </button>
               </div>
               <h2 className="text-lg font-black text-gray-900">
-                {selectedReport.shop_name}
+                {isDirectCreateMode
+                  ? '새로운 이벤트 추가'
+                  : selectedReport?.shop_name}
               </h2>
             </div>
 
@@ -435,7 +706,6 @@ export const AdminPage = () => {
 
               {/* 증거 & 영업 상태 */}
               <div className="flex gap-3">
-                {/* 좌측: 세로형 스크린샷 */}
                 <div className="w-24 h-36 shrink-0 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 relative overflow-hidden flex flex-col items-center justify-center">
                   {formData.imagePreview ? (
                     <img
@@ -466,7 +736,6 @@ export const AdminPage = () => {
                   />
                 </div>
 
-                {/* 우측: 링크 & 영업 상태 */}
                 <div className="flex-1 flex flex-col justify-between">
                   <div>
                     <label className="block text-s font-bold text-gray-500 mb-1">
@@ -510,7 +779,7 @@ export const AdminPage = () => {
                 </div>
               </div>
 
-              {/* 상세 정보 (날짜, 메뉴, 설명) */}
+              {/* 상세 정보 */}
               <div className="bg-gray-50 p-3 rounded-xl space-y-2 border border-gray-100">
                 <div className="grid grid-cols-2 gap-2">
                   <div>
@@ -558,28 +827,61 @@ export const AdminPage = () => {
               </div>
             </div>
 
-            {/* 하단 액션 버튼 (높이 및 여백 축소) */}
-            <div className="p-4 border-t bg-white">
-              <button
-                onClick={handleReviewApprove}
-                className="w-full py-4 bg-green-500 text-white rounded-xl font-bold active:scale-95 transition-transform mb-2"
-              >
-                승인 및 게시하기
-              </button>
-              <div className="flex gap-2">
+            {/* 하단 액션 버튼 */}
+            <div className="shrink-0 p-4 border-t bg-white">
+              {isViewOnlyMode ? (
                 <button
-                  onClick={() => handleReviewStatus('duplicate')}
-                  className="flex-1 py-3 bg-gray-500 text-white rounded-xl font-bold active:scale-95 transition-transform text-sm"
+                  onClick={closeModal}
+                  className="w-full py-4 bg-gray-200 text-gray-700 rounded-xl font-bold active:scale-95 transition-transform"
                 >
-                  중복
+                  닫기 (내용 확인 전용)
                 </button>
+              ) : isEditMode ? (
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleReviewApprove}
+                    className="flex-[2] py-4 bg-green-500 text-white rounded-xl font-bold active:scale-95 transition-transform"
+                  >
+                    수정 내용 저장하기
+                  </button>
+                  <button
+                    onClick={handleDeleteEvent}
+                    className="flex-1 py-4 bg-red-100 text-red-600 border border-red-200 rounded-xl font-bold active:scale-95 transition-transform"
+                  >
+                    게시 취소
+                  </button>
+                </div>
+              ) : isDirectCreateMode ? (
                 <button
-                  onClick={() => handleReviewStatus('rejected')}
-                  className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold active:scale-95 transition-transform text-sm"
+                  onClick={handleReviewApprove}
+                  className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold active:scale-95 transition-transform"
                 >
-                  거절
+                  직접 등록 및 게시하기
                 </button>
-              </div>
+              ) : (
+                <>
+                  <button
+                    onClick={handleReviewApprove}
+                    className="w-full py-4 bg-green-500 text-white rounded-xl font-bold active:scale-95 transition-transform mb-2"
+                  >
+                    승인 및 게시하기
+                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleReviewStatus('duplicate')}
+                      className="flex-1 py-3 bg-gray-500 text-white rounded-xl font-bold active:scale-95 transition-transform text-sm"
+                    >
+                      중복
+                    </button>
+                    <button
+                      onClick={() => handleReviewStatus('rejected')}
+                      className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold active:scale-95 transition-transform text-sm"
+                    >
+                      거절
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -588,27 +890,16 @@ export const AdminPage = () => {
   );
 };
 
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'approved':
-      return 'bg-green-300 border-green-200';
-    case 'duplicate':
-      return 'bg-gray-300 border-gray-200';
-    case 'rejected':
-      return 'bg-red-500 border-red-400';
-    default:
-      return 'bg-white';
-  }
-};
-
 const getTodayString = () => new Date().toISOString().split('T')[0];
 
 interface BaseReport {
   id: string;
   shop_name: string;
+  mapped_shop_name?: string | null;
   source_url: string;
-  status: 'pending' | 'approved' | 'duplicate' | 'rejected';
+  status: 'pending' | 'approved' | 'duplicate' | 'rejected' | 'canceled';
   created_at: string;
+  ramen_events?: RamenEventJoinData | RamenEventJoinData[] | null;
 }
 
 interface EventReport extends BaseReport {
@@ -622,7 +913,11 @@ interface ClosingReport extends BaseReport {
 interface Shop {
   id: string;
   name: string;
-  profile_img_url: string | null; // 이미지가 없을 수도 있으니 null 허용
+  profile_img_url: string | null;
+}
+
+interface RamenEventJoinData {
+  ends_at: string;
 }
 
 type Report = EventReport | ClosingReport;

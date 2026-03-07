@@ -12,6 +12,7 @@ import {
   ExternalLink,
   Info,
 } from 'lucide-react';
+import AppLayout from '../components/AppLayout';
 
 // --- 타입 정의 ---
 interface Shop {
@@ -221,180 +222,127 @@ export const MainPage = () => {
     'flex gap-3 md:gap-3 overflow-x-auto pb-4 cursor-grab active:cursor-grabbing select-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]';
 
   return (
-    <div className="w-full h-[100dvh] bg-white md:bg-slate-100 relative flex items-center justify-center md:py-4 md:px-8 lg:py-6 lg:px-12 overflow-hidden">
-      <div className="w-full max-w-md md:max-w-4xl lg:max-w-5xl h-full md:min-h-[700px] flex flex-col bg-slate-50 md:bg-white md:rounded-[32px] md:shadow-2xl md:border border-gray-200/60 overflow-hidden relative">
-        {/* 헤더 (높이 고정) */}
-        <header className="bg-white border-b border-gray-100 shrink-0 z-10 relative">
-          <div className="hidden md:flex absolute top-4 right-8 items-center gap-6 z-20">
-            <button className="flex items-center gap-1.5 text-[13px] font-bold text-gray-900 transition-colors">
-              <Home size={14} strokeWidth={2.5} /> 홈
-            </button>
-            <button className="flex items-center gap-1.5 text-[13px] font-bold text-gray-400 hover:text-gray-900 transition-colors">
-              <Calendar size={14} strokeWidth={2.5} /> 캘린더
-            </button>
-            <button className="flex items-center gap-1.5 text-[13px] font-bold text-gray-400 hover:text-gray-900 transition-colors">
-              <Bell size={14} strokeWidth={2.5} /> 공지사항
-            </button>
-          </div>
-          <div className="py-6 md:py-8 flex justify-center items-center gap-3">
-            <div className="w-10 h-10 md:w-11 md:h-11 bg-orange-500 rounded-xl flex items-center justify-center shadow-sm text-xl">
-              🍜
-            </div>
-            <h1 className="text-2xl md:text-3xl font-black tracking-tighter text-gray-900 uppercase">
-              Ramen <span className="text-orange-500">Today</span>
-            </h1>
-          </div>
-        </header>
-
-        {/* 메인 콘텐츠: md:justify-between을 다시 살려 1프레임 배치를 유도 */}
-        <main className="flex-1 min-h-0 flex flex-col justify-start md:justify-between px-4 md:px-8 pt-4 md:pt-[4vh] gap-y-7 md:gap-y-0 pb-6 md:pb-12 relative overflow-y-auto md:overflow-hidden">
-          <div className="hidden md:block absolute top-[1vh] right-8 z-20">
-            <button
-              onClick={() => setIsReportModalOpen(true)}
-              className="px-6 py-2.5 bg-white/80 backdrop-blur-sm border-2 border-orange-500 text-orange-600 text-sm font-black rounded-xl hover:bg-orange-500 hover:text-white transition-all flex items-center gap-2 shadow-sm"
-            >
-              <Plus size={18} strokeWidth={3} /> 새로운 소식 제보하기
-            </button>
-          </div>
-
-          <section className="shrink-0">
-            <h2 className="text-sm md:text-lg font-bold mb-3 md:mb-4 flex items-center gap-2">
-              <span>🎉</span> 오늘의 이벤트
-            </h2>
-            <div
-              onMouseDown={onMouseDown}
-              onMouseLeave={onMouseLeave}
-              onMouseUp={onMouseUp}
-              onMouseMove={onMouseMove}
-              onClickCapture={onClickCapture}
-              className={scrollContainerClass}
-            >
-              {todayEvents.length > 0 ? (
-                todayEvents.map((item, index) => (
-                  <StoryBadge
-                    key={item.id}
-                    item={item}
-                    list={todayEvents}
-                    index={index}
-                    isEvent={true}
-                  />
-                ))
-              ) : (
-                <div className="w-full min-w-[280px] h-[104px] md:h-[120px] flex items-center justify-center p-5 bg-white rounded-2xl text-[12px] md:text-[13px] font-medium text-gray-500 text-center border border-gray-100 shadow-sm">
-                  아직 들려온 이벤트 소식이 없어요.{' '}
-                  <br className="hidden md:block" />
-                  혹시 알고 계신 게 있나요? 👀
-                </div>
-              )}
-            </div>
-          </section>
-
-          <section className="shrink-0">
-            <h2 className="text-sm md:text-lg font-bold mb-3 md:mb-4 flex items-center gap-2">
-              <span>📢</span> 영업 변동
-            </h2>
-            <div
-              onMouseDown={onMouseDown}
-              onMouseLeave={onMouseLeave}
-              onMouseUp={onMouseUp}
-              onMouseMove={onMouseMove}
-              onClickCapture={onClickCapture}
-              className={scrollContainerClass}
-            >
-              {closings.length > 0 ? (
-                closings.map((item, index) => (
-                  <StoryBadge
-                    key={item.id}
-                    item={item}
-                    list={closings}
-                    index={index}
-                    isEvent={false}
-                  />
-                ))
-              ) : (
-                <div className="w-full min-w-[280px] h-[104px] md:h-[120px] flex items-center justify-center p-5 bg-white rounded-2xl text-[12px] md:text-[13px] font-medium text-gray-500 text-center border border-gray-100 shadow-sm">
-                  다행히 갑작스러운 휴무 소식은 없어요!
-                  <br className="hidden md:block" />
-                  평화로운 라멘 투데이 ✌️
-                </div>
-              )}
-            </div>
-          </section>
-
-          <section className="shrink-0">
-            <h2 className="text-sm md:text-lg font-bold mb-3 md:mb-4 flex items-center gap-2">
-              <span>📅</span> 오픈 예정
-            </h2>
-            <div
-              onMouseDown={onMouseDown}
-              onMouseLeave={onMouseLeave}
-              onMouseUp={onMouseUp}
-              onMouseMove={onMouseMove}
-              onClickCapture={onClickCapture}
-              className={scrollContainerClass}
-            >
-              {upcomingEvents.length > 0 ? (
-                <>
-                  <div className="md:hidden flex gap-3">
-                    {upcomingEvents.map((item, index) => (
-                      <StoryBadge
-                        key={item.id}
-                        item={item}
-                        list={upcomingEvents}
-                        index={index}
-                        isEvent={true}
-                      />
-                    ))}
-                  </div>
-                  <div className="hidden md:flex gap-4">
-                    {upcomingEvents.map((item, index) => (
-                      <UpcomingCard
-                        key={item.id}
-                        item={item}
-                        list={upcomingEvents}
-                        index={index}
-                      />
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <div className="w-full min-w-[280px] h-[104px] md:h-[120px] flex items-center justify-center p-5 bg-white rounded-2xl text-[12px] md:text-[13px] font-medium text-gray-500 text-center border border-gray-100 shadow-sm">
-                  예정된 이벤트 소식이 없어요.{' '}
-                  <br className="hidden md:block" />
-                  새로운 이벤트 일정을 기대해 주세요! 🍜
-                </div>
-              )}
-            </div>
-          </section>
-        </main>
-
-        {/* 모바일 하단바 */}
-        <nav className="md:hidden h-16 shrink-0 bg-white border-t border-gray-100 flex items-center justify-around px-10 pb-safe z-40">
-          <button className="flex flex-col items-center gap-1 text-orange-600">
-            <Home size={18} strokeWidth={2.5} />
-            <span className="text-[10px] font-black uppercase tracking-wider">
-              홈
-            </span>
-          </button>
+    <>
+      {/* 메인 콘텐츠: md:justify-between을 다시 살려 1프레임 배치를 유도 */}
+      <main className="flex-1 min-h-0 flex flex-col justify-start md:justify-between px-4 md:px-8 pt-4 md:pt-[4vh] gap-y-7 md:gap-y-0 pb-6 md:pb-12 relative overflow-y-auto md:overflow-hidden">
+        <div className="hidden md:block absolute top-[1vh] right-8 z-20">
           <button
             onClick={() => setIsReportModalOpen(true)}
-            className="flex flex-col items-center -translate-y-3"
+            className="px-6 py-2.5 bg-white/80 backdrop-blur-sm border-2 border-orange-500 text-orange-600 text-sm font-black rounded-xl hover:bg-orange-500 hover:text-white transition-all flex items-center gap-2 shadow-sm"
           >
-            <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center shadow-md shadow-orange-500/20 border-[4px] border-slate-50">
-              <Plus size={22} color="white" strokeWidth={3} />
-            </div>
-            <span className="text-[10px] font-black text-orange-600 mt-1">
-              제보하기
-            </span>
+            <Plus size={18} strokeWidth={3} /> 새로운 소식 제보하기
           </button>
-          <button className="flex flex-col items-center gap-1 text-gray-400">
-            <Calendar size={18} strokeWidth={2.5} />
-            <span className="text-[10px] font-black uppercase tracking-wider">
-              캘린더
-            </span>
-          </button>
-        </nav>
-      </div>
+        </div>
+
+        <section className="shrink-0">
+          <h2 className="text-sm md:text-lg font-bold mb-3 md:mb-4 flex items-center gap-2">
+            <span>🎉</span> 오늘의 이벤트
+          </h2>
+          <div
+            onMouseDown={onMouseDown}
+            onMouseLeave={onMouseLeave}
+            onMouseUp={onMouseUp}
+            onMouseMove={onMouseMove}
+            onClickCapture={onClickCapture}
+            className={scrollContainerClass}
+          >
+            {todayEvents.length > 0 ? (
+              todayEvents.map((item, index) => (
+                <StoryBadge
+                  key={item.id}
+                  item={item}
+                  list={todayEvents}
+                  index={index}
+                  isEvent={true}
+                />
+              ))
+            ) : (
+              <div className="w-full min-w-[280px] h-[104px] md:h-[120px] flex items-center justify-center p-5 bg-white rounded-2xl text-[12px] md:text-[13px] font-medium text-gray-500 text-center border border-gray-100 shadow-sm">
+                아직 들려온 이벤트 소식이 없어요.{' '}
+                <br className="hidden md:block" />
+                혹시 알고 계신 게 있나요? 👀
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="shrink-0">
+          <h2 className="text-sm md:text-lg font-bold mb-3 md:mb-4 flex items-center gap-2">
+            <span>📢</span> 영업 변동
+          </h2>
+          <div
+            onMouseDown={onMouseDown}
+            onMouseLeave={onMouseLeave}
+            onMouseUp={onMouseUp}
+            onMouseMove={onMouseMove}
+            onClickCapture={onClickCapture}
+            className={scrollContainerClass}
+          >
+            {closings.length > 0 ? (
+              closings.map((item, index) => (
+                <StoryBadge
+                  key={item.id}
+                  item={item}
+                  list={closings}
+                  index={index}
+                  isEvent={false}
+                />
+              ))
+            ) : (
+              <div className="w-full min-w-[280px] h-[104px] md:h-[120px] flex items-center justify-center p-5 bg-white rounded-2xl text-[12px] md:text-[13px] font-medium text-gray-500 text-center border border-gray-100 shadow-sm">
+                다행히 갑작스러운 휴무 소식은 없어요!
+                <br className="hidden md:block" />
+                평화로운 라멘 투데이 ✌️
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="shrink-0">
+          <h2 className="text-sm md:text-lg font-bold mb-3 md:mb-4 flex items-center gap-2">
+            <span>📅</span> 오픈 예정
+          </h2>
+          <div
+            onMouseDown={onMouseDown}
+            onMouseLeave={onMouseLeave}
+            onMouseUp={onMouseUp}
+            onMouseMove={onMouseMove}
+            onClickCapture={onClickCapture}
+            className={scrollContainerClass}
+          >
+            {upcomingEvents.length > 0 ? (
+              <>
+                <div className="md:hidden flex gap-3">
+                  {upcomingEvents.map((item, index) => (
+                    <StoryBadge
+                      key={item.id}
+                      item={item}
+                      list={upcomingEvents}
+                      index={index}
+                      isEvent={true}
+                    />
+                  ))}
+                </div>
+                <div className="hidden md:flex gap-4">
+                  {upcomingEvents.map((item, index) => (
+                    <UpcomingCard
+                      key={item.id}
+                      item={item}
+                      list={upcomingEvents}
+                      index={index}
+                    />
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="w-full min-w-[280px] h-[104px] md:h-[120px] flex items-center justify-center p-5 bg-white rounded-2xl text-[12px] md:text-[13px] font-medium text-gray-500 text-center border border-gray-100 shadow-sm">
+                예정된 이벤트 소식이 없어요. <br className="hidden md:block" />
+                새로운 이벤트 일정을 기대해 주세요! 🍜
+              </div>
+            )}
+          </div>
+        </section>
+      </main>
 
       {/* 제보하기 모달 */}
       {isReportModalOpen && (
@@ -610,6 +558,6 @@ export const MainPage = () => {
             </div>
           );
         })()}
-    </div>
+    </>
   );
 };

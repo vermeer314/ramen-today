@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Home, Calendar, Bell, Plus } from 'lucide-react';
+import { Home, Calendar, Plus } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -8,6 +9,9 @@ interface AppLayoutProps {
 const AppLayout = ({ children }: AppLayoutProps) => {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
+  const navigate = useNavigate();
+  const location = useLocation();
+
   return (
     <div className="w-full h-[100dvh] bg-white md:bg-slate-100 relative flex items-center justify-center md:py-4 md:px-8 lg:py-6 lg:px-12 overflow-hidden">
       {/* 컨테이너 */}
@@ -15,15 +19,34 @@ const AppLayout = ({ children }: AppLayoutProps) => {
         {/* 헤더 */}
         <header className="bg-white border-b border-gray-100 shrink-0 z-10 relative">
           <div className="hidden md:flex absolute top-4 right-8 items-center gap-6 z-20">
-            <button className="flex items-center gap-1.5 text-[13px] font-bold text-gray-900 transition-colors">
-              <Home size={14} strokeWidth={2.5} /> 홈
+            <button
+              onClick={() => navigate('/')}
+              className={`flex items-center gap-1.5 text-[13px] transition-colors ${
+                location.pathname === '/'
+                  ? 'text-gray-900 font-black'
+                  : 'text-gray-400 font-bold hover:text-gray-900'
+              }`}
+            >
+              <Home
+                size={14}
+                strokeWidth={location.pathname === '/' ? 3 : 2.5}
+              />
+              홈
             </button>
-            <button className="flex items-center gap-1.5 text-[13px] font-bold text-gray-400 hover:text-gray-900 transition-colors">
-              <Calendar size={14} strokeWidth={2.5} /> 캘린더
+            <button
+              onClick={() => navigate('/calendar')}
+              className={`flex items-center gap-1.5 text-[13px] transition-colors ${
+                location.pathname === '/calendar'
+                  ? 'text-gray-900 font-black'
+                  : 'text-gray-400 font-bold hover:text-gray-900'
+              }`}
+            >
+              <Calendar
+                size={14}
+                strokeWidth={location.pathname === '/calendar' ? 3 : 2.5}
+              />
+              캘린더
             </button>
-            {/* <button className="flex items-center gap-1.5 text-[13px] font-bold text-gray-400 hover:text-gray-900 transition-colors">
-              <Bell size={14} strokeWidth={2.5} /> 공지사항
-            </button> */}
           </div>
           <div className="py-6 md:py-8 flex justify-center items-center gap-3">
             <div className="w-10 h-10 md:w-11 md:h-11 bg-orange-500 rounded-xl flex items-center justify-center shadow-sm text-xl">
@@ -42,9 +65,18 @@ const AppLayout = ({ children }: AppLayoutProps) => {
 
         {/* 모바일 하단바 */}
         <nav className="md:hidden h-16 shrink-0 bg-white border-t border-gray-100 flex items-center justify-around px-10 pb-safe z-40">
-          <button className="flex flex-col items-center gap-1 text-orange-600">
-            <Home size={18} strokeWidth={2.5} />
-            <span className="text-[10px] font-black uppercase tracking-wider">
+          <button
+            onClick={() => navigate('/')}
+            className={`flex flex-col items-center gap-1 transition-colors ${
+              location.pathname === '/' ? 'text-gray-900' : 'text-gray-400'
+            }`}
+          >
+            <Home size={18} strokeWidth={location.pathname === '/' ? 3 : 2.5} />
+            <span
+              className={`text-[10px] uppercase tracking-wider ${
+                location.pathname === '/' ? 'font-black' : 'font-bold'
+              }`}
+            >
               홈
             </span>
           </button>
@@ -59,9 +91,23 @@ const AppLayout = ({ children }: AppLayoutProps) => {
               제보하기
             </span>
           </button>
-          <button className="flex flex-col items-center gap-1 text-gray-400">
-            <Calendar size={18} strokeWidth={2.5} />
-            <span className="text-[10px] font-black uppercase tracking-wider">
+          <button
+            onClick={() => navigate('/calendar')}
+            className={`flex flex-col items-center gap-1 transition-colors ${
+              location.pathname === '/calendar'
+                ? 'text-gray-900'
+                : 'text-gray-400'
+            }`}
+          >
+            <Calendar
+              size={18}
+              strokeWidth={location.pathname === '/calendar' ? 3 : 2.5}
+            />
+            <span
+              className={`text-[10px] uppercase tracking-wider ${
+                location.pathname === '/calendar' ? 'font-black' : 'font-bold'
+              }`}
+            >
               캘린더
             </span>
           </button>

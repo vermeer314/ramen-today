@@ -1,8 +1,8 @@
-import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import AppLayout from './components/AppLayout';
 import { MainPage } from './pages/MainPage';
 import { AdminPage } from './pages/AdminPage';
+import { CalendarPage } from './pages/CalendarPage';
 
 function App() {
   return (
@@ -13,6 +13,15 @@ function App() {
           element={
             <AppLayout>
               <MainPage />
+            </AppLayout>
+          }
+        />
+
+        <Route
+          path="/calendar"
+          element={
+            <AppLayout>
+              <CalendarPage />
             </AppLayout>
           }
         />

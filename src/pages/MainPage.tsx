@@ -60,7 +60,8 @@ export const MainPage = () => {
       const { data, error } = await supabase
         .from('ramen_events')
         .select(`*, shops ( name, profile_img_url )`)
-        .gte('ends_at', todayStr);
+        .gte('ends_at', todayStr)
+        .order('created_at', { ascending: false });
       if (error) throw new Error(error.message);
       return data as RamenEvent[];
     },

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, X, ChevronLeft, ChevronRight, Info } from 'lucide-react';
+import { Calendar, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { RamenEvent } from '../types/types';
 
@@ -224,17 +224,10 @@ export const StoryViewerModal = ({
           </div>
 
           {/* 상세 설명 텍스트 */}
-          <div className="flex-1 overflow-y-auto px-5 pb-4 mt-1.5 md:mt-2">
-            <div className="flex items-start gap-2.5">
-              <Info
-                size={16}
-                strokeWidth={2.5}
-                className="text-gray-400 shrink-0 mt-[2px]"
-              />
-              <p className="text-gray-700 text-[13px] md:text-[14px] font-medium leading-relaxed whitespace-pre-wrap">
-                {item.description || '상세 내용이 없습니다.'}
-              </p>
-            </div>
+          <div className="flex-1 overflow-y-auto px-5 pb-5 mt-4 md:mt-5">
+            <p className="text-gray-700 text-[13px] md:text-[14px] font-medium leading-[1.6] whitespace-pre-wrap break-keep">
+              {item.description || '상세 내용이 없습니다.'}
+            </p>
           </div>
         </div>
       </div>

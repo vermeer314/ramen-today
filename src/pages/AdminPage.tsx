@@ -268,31 +268,22 @@ export const AdminPage = () => {
       let publicUrl = formData.imagePreview;
 
       if (formData.imageFile) {
-        // ✨ 1. 이미지 압축 옵션 설정
         const options = {
-          maxSizeMB: 0.1, // 최대 100KB (0.1MB)
-          maxWidthOrHeight: 800, // 가로/세로 최대 800px (모바일 최적화)
-          useWebWorker: true, // 브라우저 안 멈추게 백그라운드에서 압축
-          initialQuality: 0.8, // 화질 80% 방어
+          maxSizeMB: 0.1,
+          maxWidthOrHeight: 800,
+          useWebWorker: true,
+          initialQuality: 0.8,
         };
 
         try {
-          // ✨ 2. 압축 실행
-          console.log(
-            `원본 크기: ${(formData.imageFile.size / 1024).toFixed(2)} KB`,
-          );
           const compressedFile = await imageCompression(
             formData.imageFile,
             options,
-          );
-          console.log(
-            `압축된 크기: ${(compressedFile.size / 1024).toFixed(2)} KB`,
           );
 
           const fileExt = compressedFile.name.split('.').pop() || 'jpeg';
           const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
 
-          // ✨ 3. 원본(formData.imageFile) 대신 압축본(compressedFile)을 업로드!
           const { error: uploadError } = await supabase.storage
             .from('proof-images')
             .upload(fileName, compressedFile);

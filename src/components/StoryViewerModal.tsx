@@ -1,26 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, X, ChevronLeft, ChevronRight, Info } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-
-interface Shop {
-  name: string;
-  profile_img_url: string | null;
-  map_url?: string;
-}
-
-export interface RamenEvent {
-  id: string;
-  shop_id: string;
-  menu_name: string | null;
-  proof_image_url: string;
-  source_url: string | null;
-  starts_at: string;
-  ends_at: string;
-  status_type: 'normal' | 'closed_lunch' | 'closed_dinner' | 'closed_all';
-  description: string | null;
-  like_count?: number;
-  shops: Shop;
-}
+import type { RamenEvent } from '../types/types';
 
 interface StoryViewerModalProps {
   list: RamenEvent[];
@@ -28,62 +9,6 @@ interface StoryViewerModalProps {
   onClose: () => void;
   onIndexChange: (index: number) => void;
 }
-
-const NoticeIcon = () => (
-  <svg
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="#9ca3af"
-    strokeWidth="1.8"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="transition-all hover:scale-110"
-  >
-    <path d="M15 3h6v6" />
-    <path d="M10 14 21 3" />
-    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-  </svg>
-);
-
-const MapPinIcon = () => (
-  <svg
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="#9ca3af"
-    strokeWidth="1.8"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="transition-all hover:scale-110"
-  >
-    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
-    <circle cx="12" cy="10" r="3" />
-  </svg>
-);
-
-const RamenIcon = ({ isLiked }: { isLiked: boolean }) => (
-  <svg
-    width="26"
-    height="26"
-    viewBox="0 0 24 24"
-    fill={isLiked ? '#ea580c' : 'none'}
-    stroke={isLiked ? '#ea580c' : '#9ca3af'}
-    strokeWidth="1.8"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={`transition-all duration-300 ${isLiked ? 'scale-110 drop-shadow-md' : 'scale-100 hover:scale-110'}`}
-  >
-    <path d="M4 12a8 8 0 0 0 16 0Z" />
-    <line x1="2" y1="7" x2="21" y2="3" fill="none" />
-    <line x1="3" y1="9" x2="22" y2="5" fill="none" />
-    <path d="M6 8.5 C 8 10, 4 11, 6 12" fill="none" />
-    <path d="M9 7.5 C 11 9, 7 10.5, 9 12" fill="none" />
-    <path d="M12 6.5 C 14 8, 10 10.5, 12 12" fill="none" />
-  </svg>
-);
 
 export const StoryViewerModal = ({
   list,
@@ -316,3 +241,59 @@ export const StoryViewerModal = ({
     </div>
   );
 };
+
+const NoticeIcon = () => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="#9ca3af"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="transition-all hover:scale-110"
+  >
+    <path d="M15 3h6v6" />
+    <path d="M10 14 21 3" />
+    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+  </svg>
+);
+
+const MapPinIcon = () => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="#9ca3af"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="transition-all hover:scale-110"
+  >
+    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+    <circle cx="12" cy="10" r="3" />
+  </svg>
+);
+
+const RamenIcon = ({ isLiked }: { isLiked: boolean }) => (
+  <svg
+    width="26"
+    height="26"
+    viewBox="0 0 24 24"
+    fill={isLiked ? '#ea580c' : 'none'}
+    stroke={isLiked ? '#ea580c' : '#9ca3af'}
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={`transition-all duration-300 ${isLiked ? 'scale-110 drop-shadow-md' : 'scale-100 hover:scale-110'}`}
+  >
+    <path d="M4 12a8 8 0 0 0 16 0Z" />
+    <line x1="2" y1="7" x2="21" y2="3" fill="none" />
+    <line x1="3" y1="9" x2="22" y2="5" fill="none" />
+    <path d="M6 8.5 C 8 10, 4 11, 6 12" fill="none" />
+    <path d="M9 7.5 C 11 9, 7 10.5, 9 12" fill="none" />
+    <path d="M12 6.5 C 14 8, 10 10.5, 12 12" fill="none" />
+  </svg>
+);

@@ -8,6 +8,25 @@ import { useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { ChevronRight } from 'lucide-react';
 
+interface BaseReport {
+  id: string;
+  shop_name: string;
+  mapped_shop_name?: string | null;
+  source_url: string;
+  status: 'pending' | 'approved' | 'duplicate' | 'rejected' | 'canceled';
+  created_at: string;
+}
+
+interface EventReport extends BaseReport {
+  type: 'event';
+}
+
+interface ClosingReport extends BaseReport {
+  type: 'closing';
+}
+
+type Report = EventReport | ClosingReport;
+
 export const AdminPage = () => {
   const queryClient = useQueryClient();
 
@@ -882,28 +901,3 @@ export const AdminPage = () => {
 };
 
 const getTodayString = () => new Date().toISOString().split('T')[0];
-
-interface BaseReport {
-  id: string;
-  shop_name: string;
-  mapped_shop_name?: string | null;
-  source_url: string;
-  status: 'pending' | 'approved' | 'duplicate' | 'rejected' | 'canceled';
-  created_at: string;
-}
-
-interface EventReport extends BaseReport {
-  type: 'event';
-}
-
-interface ClosingReport extends BaseReport {
-  type: 'closing';
-}
-
-interface Shop {
-  id: string;
-  name: string;
-  profile_img_url: string | null;
-}
-
-type Report = EventReport | ClosingReport;

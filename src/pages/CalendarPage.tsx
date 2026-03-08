@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { X, ChevronRight } from 'lucide-react';
 import { StoryViewerModal } from '../components/StoryViewerModal';
-import type { RamenEvent } from '../components/StoryViewerModal';
+import type { RamenEvent } from '../types/types';
 
 export const CalendarPage = () => {
   const [selectedDateStr, setSelectedDateStr] = useState<string | null>(null);

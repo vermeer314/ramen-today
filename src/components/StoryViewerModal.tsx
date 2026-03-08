@@ -1,17 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Calendar,
-  ExternalLink,
-  X,
-  ChevronLeft,
-  ChevronRight,
-  Info,
-} from 'lucide-react';
+import { Calendar, X, ChevronLeft, ChevronRight, Info } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface Shop {
   name: string;
   profile_img_url: string | null;
+  map_url?: string;
 }
 
 export interface RamenEvent {
@@ -35,6 +29,41 @@ interface StoryViewerModalProps {
   onIndexChange: (index: number) => void;
 }
 
+const NoticeIcon = () => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="#9ca3af"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="transition-all hover:scale-110"
+  >
+    <path d="M15 3h6v6" />
+    <path d="M10 14 21 3" />
+    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+  </svg>
+);
+
+const MapPinIcon = () => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="#9ca3af"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="transition-all hover:scale-110"
+  >
+    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+    <circle cx="12" cy="10" r="3" />
+  </svg>
+);
+
 const RamenIcon = ({ isLiked }: { isLiked: boolean }) => (
   <svg
     width="26"
@@ -47,14 +76,9 @@ const RamenIcon = ({ isLiked }: { isLiked: boolean }) => (
     strokeLinejoin="round"
     className={`transition-all duration-300 ${isLiked ? 'scale-110 drop-shadow-md' : 'scale-100 hover:scale-110'}`}
   >
-    {/* 🥣 라멘 그릇 (반원) */}
     <path d="M4 12a8 8 0 0 0 16 0Z" />
-
-    {/* 🥢 대각선 젓가락 한 쌍 (자연스럽게 기울어진 각도!) */}
     <line x1="2" y1="7" x2="21" y2="3" fill="none" />
     <line x1="3" y1="9" x2="22" y2="5" fill="none" />
-
-    {/* 🍜 꼬불꼬불한 라멘 면발 (대각선 젓가락 높이에 맞춰서 각각 다르게 매달린 디테일) */}
     <path d="M6 8.5 C 8 10, 4 11, 6 12" fill="none" />
     <path d="M9 7.5 C 11 9, 7 10.5, 9 12" fill="none" />
     <path d="M12 6.5 C 14 8, 10 10.5, 12 12" fill="none" />
@@ -71,11 +95,14 @@ export const StoryViewerModal = ({
   const hasPrev = currentIndex > 0;
   const hasNext = currentIndex < list.length - 1;
 
-  // 좋아요 상태 관리
-  const [isLiked, setIsLiked] = useState(false);
+  const [isLiked, setIsLiked] = useState(() => {
+    const likedEvents = JSON.parse(
+      localStorage.getItem('liked_ramen_events') || '[]',
+    );
+    return likedEvents.includes(item.id);
+  });
   const [localLikeCount, setLocalLikeCount] = useState(item.like_count || 0);
 
-  // 모달이 열리거나 스토리가 바뀔 때 로컬 스토리지 확인
   useEffect(() => {
     const likedEvents = JSON.parse(
       localStorage.getItem('liked_ramen_events') || '[]',
@@ -94,19 +121,14 @@ export const StoryViewerModal = ({
     if (hasNext) onIndexChange(currentIndex + 1);
   };
 
-  // ✨ 좋아요 토글(켜기/끄기) 함수
   const handleLikeToggle = async (e: React.MouseEvent) => {
     e.stopPropagation();
-
     const newIsLiked = !isLiked;
-    // 누르면 +1, 취소하면 -1 (0 밑으로는 안 내려가게 방어)
     const newCount = Math.max(0, localLikeCount + (newIsLiked ? 1 : -1));
 
-    // 1. UI 즉시 업데이트 (버벅임 방지)
     setIsLiked(newIsLiked);
     setLocalLikeCount(newCount);
 
-    // 2. 로컬 스토리지에 기록 추가 또는 삭제
     const likedEvents: string[] = JSON.parse(
       localStorage.getItem('liked_ramen_events') || '[]',
     );
@@ -118,12 +140,13 @@ export const StoryViewerModal = ({
     }
     localStorage.setItem('liked_ramen_events', JSON.stringify(updatedLikes));
 
-    // 3. DB에 진짜로 반영하기
     try {
-      const { error } = await supabase
-        .from('ramen_events')
-        .update({ like_count: newCount })
-        .eq('id', item.id);
+      const incrementAmount = newIsLiked ? 1 : -1;
+
+      const { error } = await supabase.rpc('increment_like', {
+        row_id: item.id,
+        amount: incrementAmount,
+      });
 
       if (error) throw error;
     } catch (err) {
@@ -145,7 +168,7 @@ export const StoryViewerModal = ({
         className="w-full max-w-md h-[90dvh] md:h-[92dvh] bg-white rounded-[24px] flex flex-col shadow-2xl animate-in zoom-in-95 overflow-hidden relative"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 헤더 영역 (기존 유지) */}
+        {/* 헤더 영역 */}
         <div className="h-[72px] p-4 px-5 flex justify-between items-center border-b border-gray-100 bg-slate-50 shrink-0 z-10 shadow-sm gap-2">
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <img
@@ -164,16 +187,6 @@ export const StoryViewerModal = ({
             </div>
           </div>
           <div className="flex gap-2 items-center shrink-0">
-            {item.source_url && (
-              <a
-                href={item.source_url}
-                target="_blank"
-                rel="noreferrer"
-                className="w-8 h-8 flex items-center justify-center bg-white border border-gray-200 rounded-full text-gray-600 hover:text-orange-500 hover:border-orange-500 transition-colors shadow-sm"
-              >
-                <ExternalLink size={14} strokeWidth={2.5} />
-              </a>
-            )}
             <button
               onClick={onClose}
               className="w-8 h-8 flex items-center justify-center bg-gray-200 rounded-full text-gray-500 hover:bg-gray-300 transition-colors"
@@ -183,7 +196,7 @@ export const StoryViewerModal = ({
           </div>
         </div>
 
-        {/* 사진 영역 (기존 유지) */}
+        {/* 사진 영역 */}
         <div className="relative w-full flex-1 bg-gray-900 overflow-hidden border-b border-gray-100 min-h-0">
           <img
             src={item.proof_image_url}
@@ -223,19 +236,18 @@ export const StoryViewerModal = ({
           )}
         </div>
 
-        {/* ✨ 하단 정보 영역: 구역 분리 (고정부 & 스크롤부) */}
+        {/* 하단 정보 영역 */}
         <div className="h-[140px] md:h-[150px] flex flex-col shrink-0 bg-white pb-safe rounded-b-[24px]">
-          {/* [상단 고정 구역]: 뱃지 + 좋아요 */}
-          <div className="flex justify-between items-start px-5 pt-4 shrink-0 gap-4">
+          <div className="flex justify-between items-center px-5 pt-2 md:pt-4 shrink-0 gap-3 w-full">
             {/* 왼쪽 뱃지 영역 */}
-            <div className="flex flex-wrap gap-2 flex-1 pt-1">
+            <div className="flex-1 min-w-0 pr-1">
               {item.status_type === 'normal' && item.menu_name && (
-                <span className="px-3 py-1 bg-orange-100 text-orange-700 text-[11px] md:text-xs font-black rounded-md tracking-tight border border-orange-200/50 shadow-sm">
+                <span className="inline-block max-w-full px-3 py-1 bg-orange-100 text-orange-700 text-[11px] md:text-xs font-black rounded-md tracking-tight border border-orange-200/50 shadow-sm truncate align-middle">
                   {item.menu_name}
                 </span>
               )}
               {item.status_type !== 'normal' && (
-                <span className="px-3 py-1 bg-red-100 text-red-700 text-[11px] md:text-xs font-black rounded-md tracking-tight border border-red-200/50 shadow-sm">
+                <span className="inline-block px-3 py-1 bg-red-100 text-red-700 text-[11px] md:text-xs font-black rounded-md tracking-tight border border-red-200/50 shadow-sm whitespace-nowrap align-top">
                   {item.status_type === 'closed_lunch'
                     ? '점심 마감'
                     : item.status_type === 'closed_dinner'
@@ -245,27 +257,54 @@ export const StoryViewerModal = ({
               )}
             </div>
 
-            {/* 오른쪽 좋아요 버튼 영역 */}
-            <button
-              onClick={handleLikeToggle}
-              className="flex flex-col items-center gap-1 shrink-0 px-2 active:scale-95 transition-transform"
-            >
-              <RamenIcon isLiked={isLiked} />
-              <span
-                className={`text-[10px] font-black tracking-tight ${isLiked ? 'text-orange-600' : 'text-gray-400'}`}
+            {/* 오른쪽 액션 버튼 영역 */}
+            <div className="flex items-end gap-2.5 shrink-0 pt-0.5">
+              {item.source_url && (
+                <a
+                  href={item.source_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="active:scale-95"
+                >
+                  <NoticeIcon />
+                </a>
+              )}
+
+              {item.shops.map_url && (
+                <a
+                  href={item.shops.map_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="active:scale-95"
+                >
+                  <MapPinIcon />
+                </a>
+              )}
+
+              <button
+                onClick={handleLikeToggle}
+                className="relative flex items-end shrink-0 active:scale-95 transition-transform"
               >
-                {localLikeCount}
-              </span>
-            </button>
+                <RamenIcon isLiked={isLiked} />
+
+                {localLikeCount > 0 && (
+                  <span
+                    className={`absolute -top-1.5 -right-2 text-[10px] font-black tracking-tight ${isLiked ? 'text-orange-600' : 'text-gray-400'} leading-none bg-white px-0.5`}
+                  >
+                    {localLikeCount}
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
 
-          {/* [하단 스크롤 구역]: 상세 설명 텍스트 */}
-          <div className="flex-1 overflow-y-auto px-5 pb-4 mt-2">
+          {/* 상세 설명 텍스트 */}
+          <div className="flex-1 overflow-y-auto px-5 pb-4 mt-1.5 md:mt-2">
             <div className="flex items-start gap-2.5">
               <Info
                 size={16}
                 strokeWidth={2.5}
-                className="text-gray-400 shrink-0 mt-[3px]"
+                className="text-gray-400 shrink-0 mt-[2px]"
               />
               <p className="text-gray-700 text-[13px] md:text-[14px] font-medium leading-relaxed whitespace-pre-wrap">
                 {item.description || '상세 내용이 없습니다.'}

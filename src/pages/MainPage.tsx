@@ -31,7 +31,7 @@ export const MainPage = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('ramen_events')
-        .select(`*, shops ( name, profile_img_url )`)
+        .select(`*, shops ( name, profile_img_url, map_url )`)
         .gte('ends_at', todayStr)
         .order('created_at', { ascending: false });
       if (error) throw new Error(error.message);

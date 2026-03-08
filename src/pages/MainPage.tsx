@@ -3,9 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { Plus, X } from 'lucide-react';
 import { StoryViewerModal } from '../components/StoryViewerModal';
-import type { RamenEvent } from '../components/StoryViewerModal';
-
-const getTodayString = () => new Date().toISOString().split('T')[0];
+import type { RamenEvent } from '../types/types';
 
 export const MainPage = () => {
   const [storyContext, setStoryContext] = useState<{
@@ -391,3 +389,5 @@ export const MainPage = () => {
     </>
   );
 };
+
+const getTodayString = () => new Date().toISOString().split('T')[0];

@@ -70,22 +70,21 @@ export const CalendarPage = () => {
     ? getEventsForDate(selectedDateStr)
     : [];
 
-  const today = new Date();
+  const today = new Date(
+    new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }),
+  );
   const minDate = new Date(2026, 2, 1);
-  const maxDate = new Date(today.getFullYear(), today.getMonth() + 2, 0); // 다음 달의 마지막 날
-
-  // ... (상단 로직 유지) ...
+  const maxDate = new Date(today.getFullYear(), today.getMonth() + 2, 0); // KST 기준으로 다음 달 마지막 날 계산
 
   return (
     <main className="flex-1 p-4 md:p-8 overflow-y-auto w-full flex flex-col">
-      {/* ✨ 1. 타이틀을 달력 박스 밖으로 분리 (max-w-2xl로 달력 박스와 가로 넓이를 딱 맞춤) */}
       <div className="w-full max-w-2xl mx-auto mb-3 md:mb-5 flex items-center justify-between shrink-0 pl-1">
         <h2 className="text-xl md:text-2xl font-black text-gray-900 flex items-center gap-2">
           📅 이벤트 캘린더
         </h2>
       </div>
 
-      {/* ✨ 2. 달력만 감싸는 둥근 하얀색 박스 */}
+      {/* 캘린더 컨테이너 */}
       <div className="w-full max-w-2xl mx-auto bg-white border border-gray-100 rounded-3xl shadow-sm p-4 md:p-7 h-fit flex flex-col">
         <style>{`
           .react-calendar {

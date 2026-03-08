@@ -310,23 +310,33 @@ export const AdminPage = () => {
       let publicUrl = formData.imagePreview;
 
       if (formData.imageFile) {
-        const options = {
-          maxSizeMB: 0.1,
-          maxWidthOrHeight: 800,
-          useWebWorker: true,
-          initialQuality: 0.8,
-        };
+        const imageFile = formData.imageFile;
+        const isSmallEnough = imageFile.size < 0.2 * 1024 * 1024;
 
-        const compressedFile = await imageCompression(
-          formData.imageFile,
-          options,
-        );
-        const fileExt = compressedFile.name.split('.').pop() || 'jpeg';
+        let finalFile;
+
+        if (isSmallEnough) {
+          finalFile = imageFile;
+        } else {
+          const options = {
+            maxSizeMB: 0.5,
+            maxWidthOrHeight: 1280,
+            useWebWorker: true,
+            fileType: 'image/webp',
+            initialQuality: 0.9,
+          };
+
+          finalFile = await imageCompression(imageFile, options);
+          console.log('용량이 커서 압축을 진행했습니다.');
+        }
+
+        const fileExt = finalFile.name.split('.').pop() || 'webp';
         const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
 
         const { error: uploadError } = await supabase.storage
           .from('proof-images')
-          .upload(fileName, compressedFile);
+          .upload(fileName, finalFile);
+
         if (uploadError)
           throw new Error(`이미지 업로드 실패: ${uploadError.message}`);
 
@@ -1149,4 +1159,6 @@ export const AdminPage = () => {
   );
 };
 
-const getTodayString = () => new Date().toISOString().split('T')[0];
+const getTodayString = () => {
+  return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
+};

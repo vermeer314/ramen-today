@@ -21,7 +21,9 @@ export const fetchClosingReports = async () => {
 };
 
 export const fetchActiveEventReportIds = async () => {
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toLocaleDateString('sv-SE', {
+    timeZone: 'Asia/Seoul',
+  });
 
   const { data, error } = await supabase
     .from('ramen_events')

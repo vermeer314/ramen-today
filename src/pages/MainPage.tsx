@@ -313,4 +313,6 @@ export const MainPage = () => {
   );
 };
 
-const getTodayString = () => new Date().toISOString().split('T')[0];
+const getTodayString = () => {
+  return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
+};

@@ -187,7 +187,7 @@ export const MainPage = () => {
   };
 
   const scrollContainerClass =
-    'flex gap-3 md:gap-3 overflow-x-auto pb-4 cursor-grab active:cursor-grabbing select-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]';
+    'flex gap-3 md:gap-3 overflow-x-auto pb-4 select-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]';
 
   return (
     <>
@@ -196,7 +196,7 @@ export const MainPage = () => {
         <div className="hidden md:block absolute top-[1vh] right-8 z-20">
           <button
             onClick={() => setIsReportModalOpen(true)}
-            className="px-6 py-2.5 bg-white/80 backdrop-blur-sm border-2 border-orange-500 text-orange-600 text-sm font-black rounded-xl hover:bg-orange-500 hover:text-white transition-all flex items-center gap-2 shadow-sm"
+            className="cursor-pointer px-6 py-2.5 bg-white/80 backdrop-blur-sm border-2 border-orange-500 text-orange-600 text-sm font-black rounded-xl hover:bg-orange-500 hover:text-white transition-all flex items-center gap-2 shadow-sm"
           >
             <Plus size={18} strokeWidth={3} /> 새로운 소식 제보하기
           </button>
@@ -212,7 +212,7 @@ export const MainPage = () => {
             onMouseUp={onMouseUp}
             onMouseMove={onMouseMove}
             onClickCapture={onClickCapture}
-            className={scrollContainerClass}
+            className={`${scrollContainerClass} ${todayEvents.length > 0 ? 'cursor-grab active:cursor-grabbing' : ''}`}
           >
             {todayEvents.length > 0 ? (
               todayEvents.map((item, index) => (
@@ -244,7 +244,7 @@ export const MainPage = () => {
             onMouseUp={onMouseUp}
             onMouseMove={onMouseMove}
             onClickCapture={onClickCapture}
-            className={scrollContainerClass}
+            className={`${scrollContainerClass} ${closings.length > 0 ? 'cursor-grab active:cursor-grabbing' : ''}`}
           >
             {closings.length > 0 ? (
               closings.map((item, index) => (
@@ -276,7 +276,7 @@ export const MainPage = () => {
             onMouseUp={onMouseUp}
             onMouseMove={onMouseMove}
             onClickCapture={onClickCapture}
-            className={scrollContainerClass}
+            className={`${scrollContainerClass} ${upcomingEvents.length > 0 ? 'cursor-grab active:cursor-grabbing' : ''}`}
           >
             {upcomingEvents.length > 0 ? (
               <>

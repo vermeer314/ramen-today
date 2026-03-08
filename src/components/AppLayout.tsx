@@ -1,22 +1,54 @@
 import React, { useState } from 'react';
-import { Home, Calendar, Plus } from 'lucide-react';
+import { Home, Calendar, Plus, X } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
+import { useReportStore } from '../store/useReportStore';
 
 interface AppLayoutProps {
   children: React.ReactNode;
 }
 
 const AppLayout = ({ children }: AppLayoutProps) => {
-  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const { isOpen, openModal, closeModal } = useReportStore();
+  const [reportForm, setReportForm] = useState({
+    type: 'event',
+    shop_name: '',
+    source_url: '',
+  });
 
   const navigate = useNavigate();
   const location = useLocation();
 
+  const handleSubmitReport = async () => {
+    if (!reportForm.shop_name || !reportForm.source_url) {
+      alert('가게 이름과 링크를 모두 입력해주세요!');
+      return;
+    }
+    const targetTable =
+      reportForm.type === 'event' ? 'event_reports' : 'closing_reports';
+    try {
+      const { error } = await supabase.from(targetTable).insert({
+        shop_name: reportForm.shop_name,
+        source_url: reportForm.source_url,
+        status: 'pending',
+      });
+      if (error) throw new Error(error.message);
+      alert('성공적으로 제보되었습니다! 🍜');
+      closeModal();
+      setReportForm({ type: 'event', shop_name: '', source_url: '' });
+    } catch (err) {
+      if (err instanceof Error) {
+        alert(`제보 실패: ${err.message}`);
+      } else {
+        alert('알 수 없는 오류가 발생했습니다.');
+        console.error('Unexpected error:', err);
+      }
+    }
+  };
+
   return (
     <div className="w-full h-[100dvh] bg-white md:bg-slate-100 relative flex items-center justify-center md:py-4 md:px-8 lg:py-6 lg:px-12 overflow-hidden">
-      {/* 컨테이너 */}
       <div className="w-full max-w-md md:max-w-4xl lg:max-w-5xl h-full md:min-h-[700px] flex flex-col bg-slate-50 md:bg-white md:rounded-[32px] md:shadow-2xl md:border border-gray-200/60 overflow-hidden relative">
-        {/* 헤더 */}
         <header className="bg-white border-b border-gray-100 shrink-0 z-10 relative">
           <div className="hidden md:flex absolute top-4 right-8 items-center gap-6 z-20">
             <button
@@ -58,12 +90,10 @@ const AppLayout = ({ children }: AppLayoutProps) => {
           </div>
         </header>
 
-        {/* 메인 */}
         <div className="flex-1 min-h-0 flex flex-col relative overflow-hidden">
           {children}
         </div>
 
-        {/* 모바일 하단바 */}
         <nav className="md:hidden h-16 shrink-0 bg-white border-t border-gray-100 flex items-center justify-around px-10 pb-safe z-40">
           <button
             onClick={() => navigate('/')}
@@ -81,7 +111,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
             </span>
           </button>
           <button
-            onClick={() => setIsReportModalOpen(true)}
+            onClick={openModal}
             className="flex flex-col items-center -translate-y-3"
           >
             <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center shadow-md shadow-orange-500/20 border-[4px] border-slate-50">
@@ -113,6 +143,80 @@ const AppLayout = ({ children }: AppLayoutProps) => {
           </button>
         </nav>
       </div>
+
+      {isOpen && (
+        <div
+          onClick={closeModal}
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white w-full max-w-md rounded-3xl p-8 shadow-2xl animate-in slide-in-from-bottom-4"
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold">새로운 소식 제보하기</h3>
+              <button
+                onClick={closeModal}
+                className="text-gray-400 hover:text-black transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            <div className="space-y-5">
+              <div className="flex gap-2 p-1 bg-gray-100 rounded-xl">
+                <button
+                  onClick={() =>
+                    setReportForm((p) => ({ ...p, type: 'event' }))
+                  }
+                  className={`flex-1 py-2 rounded-lg font-bold transition-all ${
+                    reportForm.type === 'event'
+                      ? 'bg-white shadow text-black'
+                      : 'text-gray-400'
+                  }`}
+                >
+                  🍜 이벤트
+                </button>
+                <button
+                  onClick={() =>
+                    setReportForm((p) => ({ ...p, type: 'closing' }))
+                  }
+                  className={`flex-1 py-2 rounded-lg font-bold transition-all ${
+                    reportForm.type === 'closing'
+                      ? 'bg-white shadow text-black'
+                      : 'text-gray-400'
+                  }`}
+                >
+                  📢 영업변동
+                </button>
+              </div>
+              <input
+                type="text"
+                placeholder="가게 이름"
+                className="w-full p-4 border border-gray-100 rounded-xl outline-none focus:border-orange-500 transition-all shadow-sm"
+                value={reportForm.shop_name}
+                onChange={(e) =>
+                  setReportForm((p) => ({ ...p, shop_name: e.target.value }))
+                }
+              />
+              <input
+                type="text"
+                placeholder="인스타나 네이버 공지 링크"
+                className="w-full p-4 border border-gray-100 rounded-xl outline-none focus:border-orange-500 transition-all shadow-sm"
+                value={reportForm.source_url}
+                onChange={(e) =>
+                  setReportForm((p) => ({ ...p, source_url: e.target.value }))
+                }
+              />
+              <button
+                onClick={handleSubmitReport}
+                className="w-full py-4 bg-orange-500 text-white font-black rounded-xl hover:bg-orange-600 active:scale-95 transition-all"
+              >
+                제보 제출하기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

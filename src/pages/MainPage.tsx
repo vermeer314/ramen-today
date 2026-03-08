@@ -1,21 +1,17 @@
 import React, { useState, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
-import { Plus, X } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { StoryViewerModal } from '../components/StoryViewerModal';
+import { useReportStore } from '../store/useReportStore';
 import type { RamenEvent } from '../types/types';
 
 export const MainPage = () => {
+  const { openModal } = useReportStore();
   const [storyContext, setStoryContext] = useState<{
     list: RamenEvent[];
     currentIndex: number;
   } | null>(null);
-  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-  const [reportForm, setReportForm] = useState({
-    type: 'event',
-    shop_name: '',
-    source_url: '',
-  });
 
   const isDown = useRef(false);
   const startX = useRef(0);
@@ -49,33 +45,6 @@ export const MainPage = () => {
     eventsData?.filter(
       (e) => e.status_type === 'normal' && e.ends_at > todayStr,
     ) || [];
-
-  const handleSubmitReport = async () => {
-    if (!reportForm.shop_name || !reportForm.source_url) {
-      alert('가게 이름과 링크를 모두 입력해주세요!');
-      return;
-    }
-    const targetTable =
-      reportForm.type === 'event' ? 'event_reports' : 'closing_reports';
-    try {
-      const { error } = await supabase.from(targetTable).insert({
-        shop_name: reportForm.shop_name,
-        source_url: reportForm.source_url,
-        status: 'pending',
-      });
-      if (error) throw new Error(error.message);
-      alert('성공적으로 제보되었습니다! 🍜');
-      setIsReportModalOpen(false);
-      setReportForm({ type: 'event', shop_name: '', source_url: '' });
-    } catch (err) {
-      if (err instanceof Error) {
-        alert(`제보 실패: ${err.message}`);
-      } else {
-        alert('알 수 없는 오류가 발생했습니다.');
-        console.error('Unexpected error:', err);
-      }
-    }
-  };
 
   const onMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     isDown.current = true;
@@ -191,11 +160,10 @@ export const MainPage = () => {
 
   return (
     <>
-      {/* 메인 콘텐츠 */}
       <main className="flex-1 min-h-0 flex flex-col justify-start md:justify-between px-4 md:px-8 pt-4 md:pt-[4vh] gap-y-7 md:gap-y-0 pb-6 md:pb-12 relative overflow-y-auto md:overflow-hidden">
         <div className="hidden md:block absolute top-[1vh] right-8 z-20">
           <button
-            onClick={() => setIsReportModalOpen(true)}
+            onClick={openModal}
             className="cursor-pointer px-6 py-2.5 bg-white/80 backdrop-blur-sm border-2 border-orange-500 text-orange-600 text-sm font-black rounded-xl hover:bg-orange-500 hover:text-white transition-all flex items-center gap-2 shadow-sm"
           >
             <Plus size={18} strokeWidth={3} /> 새로운 소식 제보하기
@@ -312,68 +280,6 @@ export const MainPage = () => {
         </section>
       </main>
 
-      {/* 제보하기 모달 */}
-      {isReportModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white w-full max-w-md rounded-3xl p-8 shadow-2xl animate-in slide-in-from-bottom-4">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold">새로운 소식 제보하기</h3>
-              <button
-                onClick={() => setIsReportModalOpen(false)}
-                className="text-gray-400 hover:text-black transition-colors"
-              >
-                <X size={24} />
-              </button>
-            </div>
-            <div className="space-y-5">
-              <div className="flex gap-2 p-1 bg-gray-100 rounded-xl">
-                <button
-                  onClick={() =>
-                    setReportForm((p) => ({ ...p, type: 'event' }))
-                  }
-                  className={`flex-1 py-2 rounded-lg font-bold transition-all ${reportForm.type === 'event' ? 'bg-white shadow text-black' : 'text-gray-400'}`}
-                >
-                  🍜 이벤트
-                </button>
-                <button
-                  onClick={() =>
-                    setReportForm((p) => ({ ...p, type: 'closing' }))
-                  }
-                  className={`flex-1 py-2 rounded-lg font-bold transition-all ${reportForm.type === 'closing' ? 'bg-white shadow text-black' : 'text-gray-400'}`}
-                >
-                  📢 영업변동
-                </button>
-              </div>
-              <input
-                type="text"
-                placeholder="가게 이름"
-                className="w-full p-4 border border-gray-100 rounded-xl outline-none focus:border-orange-500 transition-all shadow-sm"
-                value={reportForm.shop_name}
-                onChange={(e) =>
-                  setReportForm((p) => ({ ...p, shop_name: e.target.value }))
-                }
-              />
-              <input
-                type="text"
-                placeholder="증거 링크"
-                className="w-full p-4 border border-gray-100 rounded-xl outline-none focus:border-orange-500 transition-all shadow-sm"
-                value={reportForm.source_url}
-                onChange={(e) =>
-                  setReportForm((p) => ({ ...p, source_url: e.target.value }))
-                }
-              />
-              <button
-                onClick={handleSubmitReport}
-                className="w-full py-4 bg-orange-500 text-white font-black rounded-xl hover:bg-orange-600 active:scale-95 transition-all"
-              >
-                제보 제출하기
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 스토리 뷰어 모달 */}
       {storyContext && (
         <StoryViewerModal
           list={storyContext.list}

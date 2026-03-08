@@ -158,6 +158,23 @@ export const MainPage = () => {
   const scrollContainerClass =
     'flex gap-3 md:gap-3 overflow-x-auto pb-4 select-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]';
 
+  if (isLoading) {
+    return (
+      <div className="fixed inset-0 flex flex-col items-center justify-center bg-white z-[999]">
+        <div className="relative">
+          <div className="absolute inset-0 bg-slate-800/10 blur-2xl rounded-full" />
+          <div className="relative w-12 h-12 border-4 border-slate-100 border-t-slate-800 rounded-full animate-spin mb-5" />
+        </div>
+
+        <p className="text-sm font-black text-slate-800 animate-pulse tracking-tight">
+          🍜 오늘의 라멘 소식 가져오는 중...
+        </p>
+
+        <div className="pb-10" />
+      </div>
+    );
+  }
+
   return (
     <>
       <main className="flex-1 min-h-0 flex flex-col justify-start md:justify-between px-4 md:px-8 pt-4 md:pt-[4vh] gap-y-7 md:gap-y-0 pb-6 md:pb-12 relative overflow-y-auto md:overflow-hidden">

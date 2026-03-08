@@ -7,6 +7,7 @@ import {
 import { useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { ChevronRight } from 'lucide-react';
+import type { Shop } from '../types/types';
 
 interface BaseReport {
   id: string;
@@ -36,6 +37,8 @@ export const AdminPage = () => {
   const [shopSearchQuery, setShopSearchQuery] = useState<string>('');
   const [shopResults, setShopResults] = useState<Shop[]>([]);
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
+  const [isShopModalOpen, setIsShopModalOpen] = useState(false);
+  const [shopForm, setShopForm] = useState({ name: '', map_url: '' });
 
   const [formData, setFormData] = useState({
     shop_id: '',
@@ -99,7 +102,6 @@ export const AdminPage = () => {
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
     );
 
-  // 게시 중 필터링
   const filteredProcessedReports = useMemo(() => {
     return allProcessedReports.filter((report) => {
       if (doneFilter === 'all') return true;
@@ -425,6 +427,35 @@ export const AdminPage = () => {
     }
   };
 
+  const handleAddShop = async () => {
+    if (!shopForm.name) {
+      alert('가게 이름은 꼭 입력해야 해요!');
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from('shops').insert([
+        {
+          name: shopForm.name,
+          map_url: shopForm.map_url || null,
+        },
+      ]);
+
+      if (error) throw error;
+
+      alert('🍜 신규 가게가 등록되었습니다!');
+      setIsShopModalOpen(false);
+      setShopForm({ name: '', map_url: '' });
+    } catch (err) {
+      if (err instanceof Error) {
+        alert(`가게 등록 실패: ${err.message}`);
+      } else {
+        alert('알 수 없는 오류가 발생했습니다.');
+        console.error('Unexpected error:', err);
+      }
+    }
+  };
+
   return (
     <div className="p-4 md:p-6 h-[100dvh] flex flex-col bg-slate-50 overflow-hidden">
       <h1 className="text-xl md:text-2xl font-black text-gray-900 mb-4 shrink-0">
@@ -452,20 +483,29 @@ export const AdminPage = () => {
           className={`flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 min-h-0 flex-col ${activeTab === 'pending' ? 'flex' : 'hidden'} lg:flex`}
         >
           <div className="shrink-0 p-4 md:p-5 border-b border-gray-100 flex justify-between items-center bg-white rounded-t-2xl z-10">
-            <h2 className="font-bold text-gray-900 flex items-center gap-2">
+            <h2 className="font-bold text-gray-900 flex items-center gap-2 truncate pr-2">
               🚨 대기 중인 제보
               {allPendingReports.length > 0 && (
-                <span className="bg-red-100 text-red-600 px-2 py-0.5 rounded-md text-[11px] font-black">
+                <span className="bg-red-100 text-red-600 px-2 py-0.5 rounded-md text-[11px] font-black shrink-0">
                   {allPendingReports.length}건
                 </span>
               )}
             </h2>
-            <button
-              onClick={handleDirectCreate}
-              className="shrink-0 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold active:scale-95 transition-all shadow-sm"
-            >
-              + 직접 등록
-            </button>
+
+            <div className="flex gap-1.5 md:gap-2 shrink-0">
+              <button
+                onClick={() => setIsShopModalOpen(true)}
+                className="px-2.5 md:px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white rounded-lg text-xs font-bold active:scale-95 transition-all shadow-sm flex items-center"
+              >
+                + 가게<span className="hidden md:inline ml-1">등록</span>
+              </button>
+              <button
+                onClick={handleDirectCreate}
+                className="px-2.5 md:px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold active:scale-95 transition-all shadow-sm flex items-center"
+              >
+                + 제보<span className="hidden md:inline ml-1">등록</span>
+              </button>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto p-2 md:p-3 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
@@ -609,18 +649,18 @@ export const AdminPage = () => {
 
       {/* 모달 */}
       {(selectedReport || isDirectCreateMode) && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
-          <div className="bg-white w-full max-w-md rounded-[28px] shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200 h-[90dvh] md:h-auto md:max-h-[90dvh]">
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm transition-opacity">
+          <div className="bg-white w-full max-w-lg rounded-t-[32px] sm:rounded-[28px] shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-8 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300 h-[92dvh] sm:h-auto sm:max-h-[90dvh]">
             {/* 상단 헤더 */}
-            <div className="shrink-0 p-4 border-b bg-gray-50">
-              <div className="flex justify-between items-start mb-1">
+            <div className="shrink-0 px-5 py-4 border-b border-gray-100 bg-white relative z-10">
+              <div className="flex justify-between items-center mb-1.5">
                 {isDirectCreateMode ? (
-                  <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-blue-500 text-white">
+                  <span className="text-[10px] font-black px-2.5 py-1 rounded-md bg-blue-100 text-blue-700 flex items-center gap-1">
                     ✍️ 관리자 직접 등록
                   </span>
                 ) : (
                   <span
-                    className={`text-[10px] font-bold px-2 py-1 rounded-md ${selectedReport?.type === 'event' ? 'bg-green-500 text-white' : 'bg-orange-500 text-white'}`}
+                    className={`text-[10px] font-black px-2.5 py-1 rounded-md flex items-center gap-1 ${selectedReport?.type === 'event' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}
                   >
                     {selectedReport?.type === 'event'
                       ? '🍜 이벤트 제보'
@@ -629,12 +669,12 @@ export const AdminPage = () => {
                 )}
                 <button
                   onClick={closeModal}
-                  className="text-gray-400 text-xl hover:text-black"
+                  className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-900 transition-colors"
                 >
                   ✕
                 </button>
               </div>
-              <h2 className="text-lg font-black text-gray-900">
+              <h2 className="text-xl font-black text-gray-900 pr-8 truncate">
                 {isDirectCreateMode
                   ? '새로운 이벤트 추가'
                   : selectedReport?.shop_name}
@@ -642,25 +682,30 @@ export const AdminPage = () => {
             </div>
 
             {/* 바디 */}
-            <div className="p-4 flex-1 overflow-y-auto overscroll-contain space-y-4">
-              {/* 가게 매핑 */}
-              <div>
-                <label className="block text-s font-bold text-gray-500 mb-1">
-                  가게 이름 (필수)
+            <div className="p-5 flex-1 overflow-y-auto overscroll-contain space-y-6 bg-white">
+              {/* 1. 가게 매핑 */}
+              <div className="space-y-2">
+                <label className="text-xs font-black text-gray-700 flex items-center gap-1.5 ml-1">
+                  📍 가게 매핑 <span className="text-red-500">*</span>
                 </label>
                 {selectedShop ? (
-                  <div className="flex items-center justify-between p-2.5 bg-blue-50 border border-blue-200 rounded-xl">
-                    <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-between p-3 bg-blue-50/50 border border-blue-100 rounded-2xl">
+                    <div className="flex items-center gap-3">
                       <img
-                        src={selectedShop.profile_img_url || ''}
+                        src={
+                          selectedShop.profile_img_url ||
+                          'https://placehold.co/100'
+                        }
                         alt="shop"
-                        className="w-8 h-8 rounded-full bg-white object-cover border"
+                        className="w-10 h-10 rounded-full bg-white object-cover border border-blue-100 shadow-sm"
                       />
                       <div>
-                        <p className="text-[9px] text-blue-600 font-bold">
+                        <p className="text-[10px] text-blue-600 font-bold mb-0.5">
                           매핑 완료
                         </p>
-                        <p className="text-xs font-bold">{selectedShop.name}</p>
+                        <p className="text-sm font-black text-gray-900">
+                          {selectedShop.name}
+                        </p>
                       </div>
                     </div>
                     <button
@@ -669,7 +714,7 @@ export const AdminPage = () => {
                         setFormData((prev) => ({ ...prev, shop_id: '' }));
                         setShopSearchQuery('');
                       }}
-                      className="text-[10px] px-2 py-1 bg-white border rounded-md"
+                      className="text-xs font-bold px-3 py-1.5 bg-white text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 shadow-sm transition-all active:scale-95"
                     >
                       변경
                     </button>
@@ -681,10 +726,10 @@ export const AdminPage = () => {
                       value={shopSearchQuery}
                       onChange={handleSearchChange}
                       placeholder="정확한 가게명 검색"
-                      className="w-full p-2.5 border rounded-xl text-xs outline-none focus:border-black"
+                      className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-medium outline-none focus:bg-white focus:border-slate-800 focus:ring-1 focus:ring-slate-800 transition-all placeholder:text-gray-400"
                     />
                     {shopResults.length > 0 && (
-                      <ul className="absolute z-10 w-full mt-1 bg-white border rounded-xl shadow-lg max-h-40 overflow-y-auto">
+                      <ul className="absolute z-20 w-full mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl max-h-48 overflow-y-auto overflow-hidden">
                         {shopResults.map((shop) => (
                           <li
                             key={shop.id}
@@ -696,14 +741,17 @@ export const AdminPage = () => {
                               }));
                               setShopResults([]);
                             }}
-                            className="flex items-center gap-2 p-2.5 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
+                            className="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-b-0 transition-colors"
                           >
                             <img
-                              src={shop.profile_img_url || ''}
-                              className="w-6 h-6 rounded-full border object-cover"
+                              src={
+                                shop.profile_img_url ||
+                                'https://placehold.co/100'
+                              }
+                              className="w-8 h-8 rounded-full border border-gray-100 object-cover"
                               alt=""
                             />
-                            <span className="text-xs font-bold">
+                            <span className="text-sm font-bold text-gray-900">
                               {shop.name}
                             </span>
                           </li>
@@ -714,71 +762,82 @@ export const AdminPage = () => {
                 )}
               </div>
 
-              {/* 증거 & 영업 상태 */}
-              <div className="flex gap-3">
-                <div className="w-24 h-36 shrink-0 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 relative overflow-hidden flex flex-col items-center justify-center">
-                  {formData.imagePreview ? (
-                    <img
-                      src={formData.imagePreview}
-                      alt="Preview"
-                      className="w-full h-full object-cover"
+              {/* 2. 증거 사진 & 핵심 정보 */}
+              <div className="flex gap-4">
+                {/* 사진 업로드 영역 */}
+                <div className="w-[100px] shrink-0 space-y-2">
+                  <label className="text-xs font-black text-gray-700 flex items-center gap-1.5 ml-1">
+                    📸 증거 사진
+                  </label>
+                  <div className="w-full aspect-[3/4] rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 relative overflow-hidden flex flex-col items-center justify-center group hover:bg-gray-100 hover:border-slate-300 transition-colors cursor-pointer">
+                    {formData.imagePreview ? (
+                      <img
+                        src={formData.imagePreview}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center gap-1.5 opacity-50 group-hover:opacity-100 transition-opacity">
+                        <span className="text-2xl">➕</span>
+                        <span className="text-[10px] font-bold text-gray-500 text-center leading-tight">
+                          사진
+                          <br />
+                          등록
+                        </span>
+                      </div>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file)
+                          setFormData((prev) => ({
+                            ...prev,
+                            imageFile: file,
+                            imagePreview: URL.createObjectURL(file),
+                          }));
+                      }}
                     />
-                  ) : (
-                    <span className="text-xs text-gray-400 font-medium text-center leading-tight">
-                      터치하여
-                      <br />
-                      사진 등록
-                    </span>
-                  )}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file)
-                        setFormData((prev) => ({
-                          ...prev,
-                          imageFile: file,
-                          imagePreview: URL.createObjectURL(file),
-                        }));
-                    }}
-                  />
+                  </div>
                 </div>
 
-                <div className="flex-1 flex flex-col justify-between">
-                  <div>
-                    <label className="block text-s font-bold text-gray-500 mb-1">
-                      원본 링크 (필수)
+                {/* 링크 & 상태 영역 */}
+                <div className="flex-1 min-w-0 flex flex-col gap-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-gray-700 flex items-center gap-1.5 ml-1">
+                      🔗 공지 링크 <span className="text-red-500">*</span>
                     </label>
-                    <div className="flex gap-1">
+                    <div className="flex gap-1.5">
                       <input
                         type="text"
                         name="source_url"
                         value={formData.source_url}
                         onChange={handleChange}
-                        className="w-full p-2 border rounded-lg text-xs outline-none"
-                        placeholder="링크"
+                        className="flex-1 min-w-0 p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium outline-none focus:bg-white focus:border-slate-800 focus:ring-1 focus:ring-slate-800 transition-all placeholder:text-gray-400"
+                        placeholder="인스타 링크 등"
                       />
                       <a
                         href={formData.source_url}
                         target="_blank"
                         rel="noreferrer"
-                        className="shrink-0 px-2.5 py-2 bg-gray-200 text-gray-700 text-[10px] font-bold rounded-lg flex items-center"
+                        className="shrink-0 px-3 flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-600 text-[11px] font-black rounded-xl transition-colors"
                       >
-                        확인
+                        열기
                       </a>
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-s font-bold text-gray-500 mb-1 mt-2">
-                      영업 상태
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-gray-700 flex items-center gap-1.5 ml-1">
+                      ✅ 영업 상태
                     </label>
                     <select
                       name="status_type"
                       value={formData.status_type}
                       onChange={handleChange}
-                      className="w-full p-2 border rounded-lg text-xs outline-none bg-white font-bold text-blue-600"
+                      className="w-full p-3 bg-blue-50/30 border border-blue-100 rounded-xl text-sm font-black text-blue-700 outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-300 transition-all appearance-none"
                     >
                       <option value="normal">✅ 정상 / 이벤트</option>
                       <option value="closed_lunch">🍜 점심 조기마감</option>
@@ -789,11 +848,11 @@ export const AdminPage = () => {
                 </div>
               </div>
 
-              {/* 상세 정보 */}
-              <div className="bg-gray-50 p-3 rounded-xl space-y-2 border border-gray-100">
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-0.5 ml-1">
+              {/* 3. 상세 일정 및 내용 */}
+              <div className="bg-slate-50 p-4 rounded-2xl space-y-4 border border-slate-100">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-gray-500 ml-1">
                       시작일
                     </label>
                     <input
@@ -801,11 +860,11 @@ export const AdminPage = () => {
                       name="starts_at"
                       value={formData.starts_at}
                       onChange={handleChange}
-                      className="w-full p-2 border rounded-lg text-xs outline-none bg-white"
+                      className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold outline-none focus:border-slate-800 transition-colors"
                     />
                   </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-0.5 ml-1">
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-gray-500 ml-1">
                       종료일
                     </label>
                     <input
@@ -813,36 +872,48 @@ export const AdminPage = () => {
                       name="ends_at"
                       value={formData.ends_at}
                       onChange={handleChange}
-                      className="w-full p-2 border rounded-lg text-xs outline-none bg-white"
+                      className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs font-bold outline-none focus:border-slate-800 transition-colors"
                     />
                   </div>
                 </div>
+
                 {formData.status_type === 'normal' && (
-                  <input
-                    type="text"
-                    name="menu_name"
-                    value={formData.menu_name}
-                    onChange={handleChange}
-                    placeholder="메뉴명 (예: 한정 지로라멘)"
-                    className="w-full p-2 border rounded-lg text-xs outline-none bg-white"
-                  />
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-gray-500 ml-1">
+                      메뉴명
+                    </label>
+                    <input
+                      type="text"
+                      name="menu_name"
+                      value={formData.menu_name}
+                      onChange={handleChange}
+                      placeholder="예: 한정 지로라멘"
+                      className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-sm font-bold outline-none focus:border-slate-800 transition-colors placeholder:text-gray-300 placeholder:font-medium"
+                    />
+                  </div>
                 )}
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleChange}
-                  placeholder="앱에 노출될 상세 설명을 적어주세요."
-                  className="w-full h-14 p-2 border rounded-lg text-xs outline-none resize-none bg-white"
-                />
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-gray-500 ml-1">
+                    상세 설명
+                  </label>
+                  <textarea
+                    name="description"
+                    value={formData.description}
+                    onChange={handleChange}
+                    placeholder="앱에 노출될 상세 설명을 적어주세요."
+                    className="w-full h-20 p-3 bg-white border border-gray-200 rounded-xl text-sm outline-none resize-none focus:border-slate-800 transition-colors placeholder:text-gray-300 leading-relaxed"
+                  />
+                </div>
               </div>
             </div>
 
             {/* 하단 액션 버튼 */}
-            <div className="shrink-0 p-4 border-t bg-white">
+            <div className="shrink-0 p-4 sm:p-5 border-t border-gray-100 bg-white pb-safe">
               {isViewOnlyMode ? (
                 <button
                   onClick={closeModal}
-                  className="w-full py-4 bg-gray-200 text-gray-700 rounded-xl font-bold active:scale-95 transition-transform"
+                  className="w-full py-4 bg-gray-100 text-gray-600 rounded-xl font-black active:scale-95 transition-all"
                 >
                   닫기 (내용 확인 전용)
                 </button>
@@ -850,13 +921,13 @@ export const AdminPage = () => {
                 <div className="flex gap-2">
                   <button
                     onClick={handleReviewApprove}
-                    className="flex-[2] py-4 bg-green-500 text-white rounded-xl font-bold active:scale-95 transition-transform"
+                    className="flex-[2] py-4 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-black shadow-md active:scale-95 transition-all"
                   >
                     수정 내용 저장하기
                   </button>
                   <button
                     onClick={handleDeleteEvent}
-                    className="flex-1 py-4 bg-red-100 text-red-600 border border-red-200 rounded-xl font-bold active:scale-95 transition-transform"
+                    className="flex-1 py-4 bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 rounded-xl font-black active:scale-95 transition-all"
                   >
                     게시 취소
                   </button>
@@ -864,34 +935,92 @@ export const AdminPage = () => {
               ) : isDirectCreateMode ? (
                 <button
                   onClick={handleReviewApprove}
-                  className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold active:scale-95 transition-transform"
+                  className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black shadow-md active:scale-95 transition-all"
                 >
                   직접 등록 및 게시하기
                 </button>
               ) : (
-                <>
+                <div className="space-y-2">
                   <button
                     onClick={handleReviewApprove}
-                    className="w-full py-4 bg-green-500 text-white rounded-xl font-bold active:scale-95 transition-transform mb-2"
+                    className="w-full py-4 bg-green-600 hover:bg-green-700 text-white rounded-xl font-black shadow-md active:scale-95 transition-all"
                   >
                     승인 및 게시하기
                   </button>
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleReviewStatus('duplicate')}
-                      className="flex-1 py-3 bg-gray-500 text-white rounded-xl font-bold active:scale-95 transition-transform text-sm"
+                      className="flex-1 py-3.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-black active:scale-95 transition-all text-sm"
                     >
-                      중복
+                      중복 제보
                     </button>
                     <button
                       onClick={() => handleReviewStatus('rejected')}
-                      className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold active:scale-95 transition-transform text-sm"
+                      className="flex-1 py-3.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-black active:scale-95 transition-all text-sm"
                     >
-                      거절
+                      제보 거절
                     </button>
                   </div>
-                </>
+                </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 가게 등록 퀵 모달 */}
+      {isShopModalOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-sm rounded-[28px] p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+            <h3 className="text-xl font-black text-gray-900 mb-5 flex items-center gap-2">
+              🏪 신규 가게 퀵 등록
+            </h3>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1.5 ml-1">
+                  가게 이름 (필수)
+                </label>
+                <input
+                  type="text"
+                  placeholder="정확한 상호명"
+                  className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold outline-none focus:bg-white focus:border-slate-800 focus:ring-1 focus:ring-slate-800 transition-all placeholder:text-gray-400 placeholder:font-medium"
+                  value={shopForm.name}
+                  onChange={(e) =>
+                    setShopForm((p) => ({ ...p, name: e.target.value }))
+                  }
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1.5 ml-1">
+                  지도 링크 (필수)
+                </label>
+                <input
+                  type="text"
+                  placeholder="네이버/카카오 맵 URL"
+                  className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold outline-none focus:bg-white focus:border-slate-800 focus:ring-1 focus:ring-slate-800 transition-all placeholder:text-gray-400 placeholder:font-medium"
+                  value={shopForm.map_url}
+                  onChange={(e) =>
+                    setShopForm((p) => ({ ...p, map_url: e.target.value }))
+                  }
+                />
+              </div>
+
+              <div className="flex gap-2 pt-4 mt-2 border-t border-gray-100">
+                <button
+                  onClick={() => setIsShopModalOpen(false)}
+                  className="flex-1 py-3.5 bg-gray-100 hover:bg-gray-200 text-gray-600 font-black rounded-xl active:scale-95 transition-all"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleAddShop}
+                  className="flex-[2] py-3.5 bg-slate-800 hover:bg-slate-900 text-white font-black rounded-xl shadow-md active:scale-95 transition-all"
+                >
+                  등록하기
+                </button>
+              </div>
             </div>
           </div>
         </div>

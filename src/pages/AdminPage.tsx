@@ -1,14 +1,15 @@
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   fetchEventReports,
   fetchClosingReports,
   fetchActiveEventReportIds,
 } from '../api/reports';
-import { useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { ChevronRight } from 'lucide-react';
 import type { Shop } from '../types/types';
 import imageCompression from 'browser-image-compression';
+import type { Session } from '@supabase/supabase-js';
 
 interface BaseReport {
   id: string;
@@ -32,9 +33,15 @@ type Report = EventReport | ClosingReport;
 export const AdminPage = () => {
   const queryClient = useQueryClient();
 
+  // 인증 상태
+  const [session, setSession] = useState<Session | null>(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoginLoading, setIsLoginLoading] = useState(false);
+  const [isSessionChecking, setIsSessionChecking] = useState(true);
+
   const [activeTab, setActiveTab] = useState('pending');
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
-
   const [shopSearchQuery, setShopSearchQuery] = useState<string>('');
   const [shopResults, setShopResults] = useState<Shop[]>([]);
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
@@ -57,8 +64,40 @@ export const AdminPage = () => {
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [isDirectCreateMode, setIsDirectCreateMode] = useState(false);
   const [isViewOnlyMode, setIsViewOnlyMode] = useState(false);
-
   const [doneFilter, setDoneFilter] = useState('live');
+
+  // 세션 체크
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setIsSessionChecking(false);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoginLoading(true);
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) {
+      alert('로그인 실패: 이메일이나 비밀번호를 확인해주세요.');
+    }
+    setIsLoginLoading(false);
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
 
   const closeModal = () => {
     setSelectedReport(null);
@@ -71,19 +110,24 @@ export const AdminPage = () => {
   const { data: eventReports } = useQuery({
     queryKey: ['event_reports'],
     queryFn: fetchEventReports,
+    enabled: !!session,
   });
 
   const { data: closingReports } = useQuery({
     queryKey: ['closing_reports'],
     queryFn: fetchClosingReports,
+    enabled: !!session,
   });
 
   const { data: activeEvents } = useQuery({
     queryKey: ['active_events'],
     queryFn: fetchActiveEventReportIds,
+    enabled: !!session,
   });
 
-  const activeReportIds = activeEvents?.map((item) => item.report_id) || [];
+  const activeReportIds = useMemo(() => {
+    return activeEvents?.map((item) => item.report_id) || [];
+  }, [activeEvents]);
 
   const events = eventReports?.map((r) => ({ ...r, type: 'event' })) || [];
   const closings =
@@ -106,12 +150,10 @@ export const AdminPage = () => {
   const filteredProcessedReports = useMemo(() => {
     return allProcessedReports.filter((report) => {
       if (doneFilter === 'all') return true;
-
       if (doneFilter === 'live') {
         if (report.status !== 'approved') return false;
         return activeReportIds.includes(report.id);
       }
-
       if (doneFilter === 'approved') return report.status === 'approved';
       if (doneFilter === 'rejected')
         return report.status === 'rejected' || report.status === 'duplicate';
@@ -275,30 +317,23 @@ export const AdminPage = () => {
           initialQuality: 0.8,
         };
 
-        try {
-          const compressedFile = await imageCompression(
-            formData.imageFile,
-            options,
-          );
+        const compressedFile = await imageCompression(
+          formData.imageFile,
+          options,
+        );
+        const fileExt = compressedFile.name.split('.').pop() || 'jpeg';
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
 
-          const fileExt = compressedFile.name.split('.').pop() || 'jpeg';
-          const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage
+          .from('proof-images')
+          .upload(fileName, compressedFile);
+        if (uploadError)
+          throw new Error(`이미지 업로드 실패: ${uploadError.message}`);
 
-          const { error: uploadError } = await supabase.storage
-            .from('proof-images')
-            .upload(fileName, compressedFile);
-
-          if (uploadError)
-            throw new Error(`이미지 업로드 실패: ${uploadError.message}`);
-
-          const {
-            data: { publicUrl: newUrl },
-          } = supabase.storage.from('proof-images').getPublicUrl(fileName);
-          publicUrl = newUrl;
-        } catch (error) {
-          console.error('이미지 압축/업로드 에러:', error);
-          throw new Error('이미지 처리 중 문제가 발생했습니다.');
-        }
+        const {
+          data: { publicUrl: newUrl },
+        } = supabase.storage.from('proof-images').getPublicUrl(fileName);
+        publicUrl = newUrl;
       }
 
       const eventData = {
@@ -475,11 +510,77 @@ export const AdminPage = () => {
     }
   };
 
+  // 로딩 중 화면
+  if (isSessionChecking) {
+    return (
+      <div className="min-h-[100dvh] flex items-center justify-center bg-slate-50">
+        <div className="w-8 h-8 border-4 border-slate-800 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  // 로그인 화면
+  if (!session) {
+    return (
+      <div className="min-h-[100dvh] flex items-center justify-center bg-slate-50 p-4">
+        <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-sm animate-in zoom-in-95 duration-200 border border-gray-100">
+          <h2 className="text-2xl font-black text-gray-900 mb-6 text-center tracking-tight">
+            ⚠️ 관리자 로그인 ⚠️
+          </h2>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-500 mb-1.5 ml-1">
+                이메일
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold outline-none focus:bg-white focus:border-slate-800 focus:ring-1 focus:ring-slate-800 transition-all placeholder:text-gray-400"
+                placeholder="admin@example.com"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 mb-1.5 ml-1">
+                비밀번호
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold outline-none focus:bg-white focus:border-slate-800 focus:ring-1 focus:ring-slate-800 transition-all placeholder:text-gray-400"
+                placeholder="••••••••"
+                required
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={isLoginLoading}
+              className="w-full py-3.5 bg-slate-800 hover:bg-slate-900 text-white font-black rounded-xl shadow-md active:scale-95 transition-all mt-2 disabled:opacity-50"
+            >
+              {isLoginLoading ? '로그인 중...' : '입장하기'}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // 메인 관리자 화면 (로그인 성공 시)
   return (
-    <div className="p-4 md:p-6 h-[100dvh] flex flex-col bg-slate-50 overflow-hidden">
-      <h1 className="text-xl md:text-2xl font-black text-gray-900 mb-4 shrink-0">
-        관리자 페이지
-      </h1>
+    <div className="p-4 md:p-6 h-[100dvh] flex flex-col bg-slate-50 overflow-hidden animate-in fade-in duration-300">
+      <div className="flex justify-between items-center mb-4 shrink-0">
+        <h1 className="text-xl md:text-2xl font-black text-gray-900 tracking-tight">
+          관리자 페이지
+        </h1>
+        <button
+          onClick={handleLogout}
+          className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-xs font-bold transition-colors"
+        >
+          로그아웃
+        </button>
+      </div>
 
       <div className="flex gap-2 lg:hidden mb-4 shrink-0">
         <button
@@ -826,7 +927,7 @@ export const AdminPage = () => {
                 <div className="flex-1 min-w-0 flex flex-col gap-4">
                   <div className="space-y-2">
                     <label className="text-xs font-black text-gray-700 flex items-center gap-1.5 ml-1">
-                      🔗 공지 링크 <span className="text-red-500">*</span>
+                      🔗 원본 링크 <span className="text-red-500">*</span>
                     </label>
                     <div className="flex gap-1.5">
                       <input
@@ -992,7 +1093,7 @@ export const AdminPage = () => {
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-sm rounded-[28px] p-6 shadow-2xl animate-in zoom-in-95 duration-200">
             <h3 className="text-xl font-black text-gray-900 mb-5 flex items-center gap-2">
-              🏪 신규 가게 퀵 등록
+              신규 가게 퀵 등록
             </h3>
 
             <div className="space-y-4">

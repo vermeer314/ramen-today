@@ -204,7 +204,7 @@ export const MainPage = () => {
 
         <section className="shrink-0">
           <h2 className="text-sm md:text-lg font-bold mb-3 md:mb-4 flex items-center gap-2">
-            <span>📢</span> 영업 변동
+            <span>📢</span> 영업 변동 (조기마감, 긴급휴무)
           </h2>
           <div
             onMouseDown={onMouseDown}
@@ -236,7 +236,7 @@ export const MainPage = () => {
 
         <section className="shrink-0">
           <h2 className="text-sm md:text-lg font-bold mb-3 md:mb-4 flex items-center gap-2">
-            <span>📅</span> 오픈 예정
+            <span>📅</span> 예정된 이벤트
           </h2>
           <div
             onMouseDown={onMouseDown}

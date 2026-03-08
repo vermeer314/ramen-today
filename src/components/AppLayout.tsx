@@ -24,15 +24,28 @@ const AppLayout = ({ children }: AppLayoutProps) => {
       alert('가게 이름과 링크를 모두 입력해주세요!');
       return;
     }
+
+    const url = reportForm.source_url.trim();
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      alert(
+        '링크는 http:// 또는 https:// 로 시작해야 합니다! (복사해서 붙여넣어 주세요)',
+      );
+      return;
+    }
+
     const targetTable =
       reportForm.type === 'event' ? 'event_reports' : 'closing_reports';
+
     try {
       const { error } = await supabase.from(targetTable).insert({
         shop_name: reportForm.shop_name,
-        source_url: reportForm.source_url,
+        source_url: url,
         status: 'pending',
       });
       if (error) throw new Error(error.message);
+
+      await sendDiscordNotification(reportForm.type, reportForm.shop_name, url);
+
       alert('성공적으로 제보되었습니다! 🍜');
       closeModal();
       setReportForm({ type: 'event', shop_name: '', source_url: '' });
@@ -219,6 +232,53 @@ const AppLayout = ({ children }: AppLayoutProps) => {
       )}
     </div>
   );
+};
+
+const sendDiscordNotification = async (
+  type: string,
+  shopName: string,
+  sourceUrl: string,
+) => {
+  const webhookUrl =
+    type === 'event'
+      ? import.meta.env.VITE_DISCORD_WEBHOOK_EVENT
+      : import.meta.env.VITE_DISCORD_WEBHOOK_CLOSING;
+
+  if (!webhookUrl) return;
+
+  const isEvent = type === 'event';
+
+  const message = {
+    embeds: [
+      {
+        title: isEvent ? '🍜 새로운 이벤트 제보' : '📢 영업 변동 제보',
+        color: isEvent ? 2226226 : 15158332,
+        fields: [
+          {
+            name: '가게 이름',
+            value: shopName,
+            inline: true,
+          },
+          {
+            name: '원본 링크',
+            value: `[확인하기](${sourceUrl})`,
+            inline: true,
+          },
+        ],
+        timestamp: new Date().toISOString(),
+      },
+    ],
+  };
+
+  try {
+    await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(message),
+    });
+  } catch (error) {
+    console.error('Discord webhook error:', error);
+  }
 };
 
 export default AppLayout;

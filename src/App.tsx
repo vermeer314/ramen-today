@@ -3,6 +3,12 @@ import AppLayout from './components/AppLayout';
 import { MainPage } from './pages/MainPage';
 import { AdminPage } from './pages/AdminPage';
 import { CalendarPage } from './pages/CalendarPage';
+import TagManager from 'react-gtm-module';
+
+const gtmId = import.meta.env.VITE_GTM_ID;
+if (gtmId) {
+  TagManager.initialize({ gtmId });
+}
 
 function App() {
   return (

@@ -25,6 +25,20 @@ const AppLayout = ({ children }: AppLayoutProps) => {
       return;
     }
 
+    const lastReportTime = localStorage.getItem('last_report_time');
+    if (lastReportTime) {
+      const timeDiff = Date.now() - parseInt(lastReportTime, 10);
+      const cooldown = 60 * 1000;
+
+      if (timeDiff < cooldown) {
+        const remainSeconds = Math.ceil((cooldown - timeDiff) / 1000);
+        alert(
+          `무분별한 제보 방지를 위해 잠시 후 다시 시도해주세요. (${remainSeconds}초 후 가능)`,
+        );
+        return;
+      }
+    }
+
     const url = reportForm.source_url.trim();
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
       alert(
@@ -46,6 +60,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
 
       await sendDiscordNotification(reportForm.type, reportForm.shop_name, url);
 
+      localStorage.setItem('last_report_time', Date.now().toString());
       alert('성공적으로 제보되었습니다! 🍜');
       closeModal();
       setReportForm({ type: 'event', shop_name: '', source_url: '' });

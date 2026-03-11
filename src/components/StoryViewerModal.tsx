@@ -90,144 +90,149 @@ export const StoryViewerModal = ({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md h-[90dvh] md:h-[92dvh] bg-white rounded-[24px] flex flex-col shadow-2xl animate-in zoom-in-95 overflow-hidden relative"
+        className="relative w-full max-w-md h-[85dvh] md:h-[92dvh] animate-in zoom-in-95 flex items-center justify-center"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 헤더 영역 */}
-        <div className="h-[72px] p-4 px-5 flex justify-between items-center border-b border-gray-100 bg-slate-50 shrink-0 z-10 shadow-sm gap-2">
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            <img
-              src={item.shops.profile_img_url || ''}
-              className="w-10 h-10 rounded-full border border-gray-200 object-cover shadow-sm shrink-0"
-              alt="logo"
-            />
-            <div className="min-w-0 flex-1">
-              <h3 className="font-black text-gray-900 leading-tight truncate">
-                {item.shops.name}
-              </h3>
-              <div className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 bg-orange-50 border border-orange-100 text-orange-600 rounded text-[10px] md:text-[11px] font-black tracking-tight whitespace-nowrap max-w-full">
-                <Calendar size={12} strokeWidth={2.5} className="shrink-0" />
-                <span className="truncate">{dateDisplay}</span>
+        {hasPrev && (
+          <button
+            onClick={handlePrev}
+            className="hidden md:flex absolute -left-14 lg:-left-14 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 text-white rounded-full items-center justify-center shadow-lg z-30 transition-all backdrop-blur-md cursor-pointer"
+          >
+            <ChevronLeft size={28} />
+          </button>
+        )}
+
+        {hasNext && (
+          <button
+            onClick={handleNext}
+            className="hidden md:flex absolute -right-14 lg:-right-14 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 text-white rounded-full items-center justify-center shadow-lg z-30 transition-all backdrop-blur-md cursor-pointer"
+          >
+            <ChevronRight size={28} />
+          </button>
+        )}
+
+        <div className="w-full h-full bg-white rounded-[24px] flex flex-col shadow-2xl overflow-hidden relative">
+          {/* 헤더 영역 */}
+          <div className="h-[72px] p-4 px-5 flex justify-between items-center border-b border-gray-100 bg-slate-50 shrink-0 z-10 shadow-sm gap-2">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <img
+                src={item.shops.profile_img_url || ''}
+                className="w-10 h-10 rounded-full border border-gray-200 object-cover shadow-sm shrink-0"
+                alt="logo"
+              />
+              <div className="min-w-0 flex-1">
+                <h3 className="font-black text-gray-900 leading-tight truncate">
+                  {item.shops.name}
+                </h3>
+                <div className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 bg-orange-50 border border-orange-100 text-orange-600 rounded text-[10px] md:text-[11px] font-black tracking-tight whitespace-nowrap max-w-full">
+                  <Calendar size={12} strokeWidth={2.5} className="shrink-0" />
+                  <span className="truncate">{dateDisplay}</span>
+                </div>
               </div>
             </div>
-          </div>
-          <div className="flex gap-2 items-center shrink-0">
-            <button
-              onClick={onClose}
-              className="w-8 h-8 flex items-center justify-center bg-gray-200 rounded-full text-gray-500 hover:bg-gray-300 transition-colors"
-            >
-              <X size={16} strokeWidth={2.5} />
-            </button>
-          </div>
-        </div>
-
-        {/* 사진 영역 */}
-        <div className="relative w-full flex-1 bg-gray-900 overflow-hidden border-b border-gray-100 min-h-0">
-          <img
-            src={item.proof_image_url}
-            className="absolute inset-0 w-full h-full object-cover opacity-30 blur-xl scale-110"
-            alt="blur bg"
-          />
-          <img
-            src={item.proof_image_url}
-            className="absolute inset-0 w-full h-full object-contain drop-shadow-xl"
-            alt="proof"
-          />
-          <div className="absolute inset-0 flex">
-            <div
-              className="w-1/3 h-full cursor-pointer z-20"
-              onClick={handlePrev}
-            />
-            <div
-              className="w-2/3 h-full cursor-pointer z-20"
-              onClick={handleNext}
-            />
-          </div>
-          {hasPrev && (
-            <button
-              onClick={handlePrev}
-              className="hidden md:flex absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/90 hover:bg-white text-gray-900 rounded-full items-center justify-center shadow-md z-30 transition-all"
-            >
-              <ChevronLeft size={20} />
-            </button>
-          )}
-          {hasNext && (
-            <button
-              onClick={handleNext}
-              className="hidden md:flex absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/90 hover:bg-white text-gray-900 rounded-full items-center justify-center shadow-md z-30 transition-all"
-            >
-              <ChevronRight size={20} />
-            </button>
-          )}
-        </div>
-
-        {/* 하단 정보 영역 */}
-        <div className="h-[140px] md:h-[150px] flex flex-col shrink-0 bg-white pb-safe rounded-b-[24px]">
-          <div className="flex justify-between items-center px-5 pt-2 md:pt-4 shrink-0 gap-3 w-full">
-            {/* 왼쪽 뱃지 영역 */}
-            <div className="flex-1 min-w-0 pr-1">
-              {item.status_type === 'normal' && item.menu_name && (
-                <span className="inline-block max-w-full px-3 py-1 bg-orange-100 text-orange-700 text-[11px] md:text-xs font-black rounded-md tracking-tight border border-orange-200/50 shadow-sm truncate align-middle">
-                  {item.menu_name}
-                </span>
-              )}
-              {item.status_type !== 'normal' && (
-                <span className="inline-block px-3 py-1 bg-red-100 text-red-700 text-[11px] md:text-xs font-black rounded-md tracking-tight border border-red-200/50 shadow-sm whitespace-nowrap align-top">
-                  {item.status_type === 'closed_lunch'
-                    ? '점심 마감'
-                    : item.status_type === 'closed_dinner'
-                      ? '저녁 마감'
-                      : '전체 휴무'}
-                </span>
-              )}
-            </div>
-
-            {/* 오른쪽 액션 버튼 영역 */}
-            <div className="flex items-end gap-2.5 shrink-0 pt-0.5">
-              {item.source_url && (
-                <a
-                  href={item.source_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="active:scale-95"
-                >
-                  <NoticeIcon />
-                </a>
-              )}
-
-              {item.shops.map_url && (
-                <a
-                  href={item.shops.map_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="active:scale-95"
-                >
-                  <MapPinIcon />
-                </a>
-              )}
-
+            <div className="flex gap-2 items-center shrink-0">
               <button
-                onClick={handleLikeToggle}
-                className="relative flex items-end shrink-0 active:scale-95 transition-transform"
+                onClick={onClose}
+                className="w-8 h-8 flex items-center justify-center bg-gray-200 rounded-full text-gray-500 hover:bg-gray-300 transition-colors"
               >
-                <RamenIcon isLiked={isLiked} />
-
-                {localLikeCount > 0 && (
-                  <span
-                    className={`absolute -top-1.5 -right-2 text-[10px] font-black tracking-tight ${isLiked ? 'text-orange-600' : 'text-gray-400'} leading-none bg-white px-0.5`}
-                  >
-                    {localLikeCount}
-                  </span>
-                )}
+                <X size={16} strokeWidth={2.5} />
               </button>
             </div>
           </div>
 
-          {/* 상세 설명 텍스트 */}
-          <div className="flex-1 overflow-y-auto px-5 pb-5 mt-4 md:mt-5">
-            <p className="text-gray-700 text-[13px] md:text-[14px] font-medium leading-[1.6] whitespace-pre-wrap break-keep">
-              {item.description || '상세 내용이 없습니다.'}
-            </p>
+          {/* 사진 영역 */}
+          <div className="relative w-full flex-1 bg-gray-900 overflow-hidden border-b border-gray-100 min-h-0">
+            <img
+              src={item.proof_image_url}
+              className="absolute inset-0 w-full h-full object-cover opacity-30 blur-xl scale-110"
+              alt="blur bg"
+            />
+            <img
+              src={item.proof_image_url}
+              className="absolute inset-0 w-full h-full object-contain drop-shadow-xl"
+              alt="proof"
+            />
+            {/* 사진 내부 투명 클릭 영역 (cursor-pointer 적용되어 있음) */}
+            <div className="absolute inset-0 flex">
+              <div
+                className="w-1/3 h-full cursor-pointer z-20"
+                onClick={handlePrev}
+              />
+              <div
+                className="w-2/3 h-full cursor-pointer z-20"
+                onClick={handleNext}
+              />
+            </div>
+          </div>
+
+          {/* 하단 정보 영역*/}
+          <div className="h-[110px] md:h-37.5 flex flex-col shrink-0 bg-white pb-safe rounded-b-[24px]">
+            <div className="flex justify-between items-center px-5 pt-2 md:pt-4 shrink-0 gap-3 w-full">
+              {/* 왼쪽 뱃지 영역 */}
+              <div className="flex-1 min-w-0 pr-1">
+                {item.status_type === 'normal' && item.menu_name && (
+                  <span className="inline-block max-w-full px-3 py-1 bg-orange-100 text-orange-700 text-[11px] md:text-xs font-black rounded-md tracking-tight border border-orange-200/50 shadow-sm truncate align-middle">
+                    {item.menu_name}
+                  </span>
+                )}
+                {item.status_type !== 'normal' && (
+                  <span className="inline-block px-3 py-1 bg-red-100 text-red-700 text-[11px] md:text-xs font-black rounded-md tracking-tight border border-red-200/50 shadow-sm whitespace-nowrap align-top">
+                    {item.status_type === 'closed_lunch'
+                      ? '점심 마감'
+                      : item.status_type === 'closed_dinner'
+                        ? '저녁 마감'
+                        : '전체 휴무'}
+                  </span>
+                )}
+              </div>
+
+              {/* 오른쪽 액션 버튼 영역 */}
+              <div className="flex items-end gap-2.5 shrink-0 pt-0.5">
+                {item.source_url && (
+                  <a
+                    href={item.source_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="active:scale-95"
+                  >
+                    <NoticeIcon />
+                  </a>
+                )}
+
+                {item.shops.map_url && (
+                  <a
+                    href={item.shops.map_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="active:scale-95"
+                  >
+                    <MapPinIcon />
+                  </a>
+                )}
+
+                <button
+                  onClick={handleLikeToggle}
+                  className="relative flex items-end shrink-0 active:scale-95 transition-transform"
+                >
+                  <RamenIcon isLiked={isLiked} />
+
+                  {localLikeCount > 0 && (
+                    <span
+                      className={`absolute -top-1.5 -right-2 text-[10px] font-black tracking-tight ${isLiked ? 'text-orange-600' : 'text-gray-400'} leading-none bg-white px-0.5`}
+                    >
+                      {localLikeCount}
+                    </span>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* 상세 설명 텍스트 */}
+            <div className="flex-1 overflow-y-auto px-5 pb-4 mt-4 md:mt-5">
+              <p className="text-gray-700 text-[13px] md:text-[14px] font-medium leading-[1.6] whitespace-pre-wrap break-keep">
+                {item.description || '상세 내용이 없습니다.'}
+              </p>
+            </div>
           </div>
         </div>
       </div>

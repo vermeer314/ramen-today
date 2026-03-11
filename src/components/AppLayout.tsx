@@ -93,13 +93,18 @@ const AppLayout = ({ children }: AppLayoutProps) => {
               캘린더
             </button>
           </div>
-          <div className="py-6 md:py-8 flex justify-center items-center gap-3">
-            <div className="w-10 h-10 md:w-11 md:h-11 bg-orange-500 rounded-xl flex items-center justify-center shadow-sm text-xl">
-              🍜
+          <div className="py-6 md:py-8 flex justify-center items-center">
+            <div
+              onClick={() => navigate('/')}
+              className="flex items-center gap-3 cursor-pointer"
+            >
+              <div className="w-10 h-10 md:w-11 md:h-11 bg-orange-500 rounded-xl flex items-center justify-center shadow-sm text-xl">
+                🍜
+              </div>
+              <h1 className="text-2xl md:text-3xl font-black tracking-tighter text-gray-900 uppercase">
+                Ramen <span className="text-orange-500">Today</span>
+              </h1>
             </div>
-            <h1 className="text-2xl md:text-3xl font-black tracking-tighter text-gray-900 uppercase">
-              Ramen <span className="text-orange-500">Today</span>
-            </h1>
           </div>
         </header>
 

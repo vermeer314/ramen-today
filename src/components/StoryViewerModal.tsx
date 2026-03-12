@@ -20,16 +20,11 @@ export const StoryViewerModal = ({
   const hasPrev = currentIndex > 0;
   const hasNext = currentIndex < list.length - 1;
 
-  const [isLiked, setIsLiked] = useState(() => {
-    const likedEvents = JSON.parse(
-      localStorage.getItem('liked_ramen_events') || '[]',
-    );
-    return likedEvents.includes(item.id);
-  });
-  const [localLikeCount, setLocalLikeCount] = useState(item.like_count || 0);
+  const [isLiked, setIsLiked] = useState(false);
+  const [localLikeCount, setLocalLikeCount] = useState(0);
 
   useEffect(() => {
-    const likedEvents = JSON.parse(
+    const likedEvents: string[] = JSON.parse(
       localStorage.getItem('liked_ramen_events') || '[]',
     );
     setIsLiked(likedEvents.includes(item.id));
@@ -57,20 +52,17 @@ export const StoryViewerModal = ({
     const likedEvents: string[] = JSON.parse(
       localStorage.getItem('liked_ramen_events') || '[]',
     );
-    let updatedLikes;
-    if (newIsLiked) {
-      updatedLikes = [...likedEvents, item.id];
-    } else {
-      updatedLikes = likedEvents.filter((id) => id !== item.id);
-    }
+
+    const updatedLikes = newIsLiked
+      ? [...likedEvents, item.id]
+      : likedEvents.filter((id) => id !== item.id);
+
     localStorage.setItem('liked_ramen_events', JSON.stringify(updatedLikes));
 
     try {
-      const incrementAmount = newIsLiked ? 1 : -1;
-
       const { error } = await supabase.rpc('increment_like', {
         row_id: item.id,
-        amount: incrementAmount,
+        amount: newIsLiked ? 1 : -1,
       });
 
       if (error) throw error;
@@ -113,32 +105,32 @@ export const StoryViewerModal = ({
 
         <div className="w-full h-full bg-white rounded-[24px] flex flex-col shadow-2xl overflow-hidden relative">
           {/* 헤더 영역 */}
-          <div className="h-[72px] p-4 px-5 flex justify-between items-center border-b border-gray-100 bg-slate-50 shrink-0 z-10 shadow-sm gap-2">
-            <div className="flex items-center gap-3 min-w-0 flex-1">
+          <header className="h-[72px] px-5 flex justify-between items-center border-b border-gray-100 bg-slate-50 shrink-0 z-10 shadow-sm">
+            <div className="flex items-center gap-3 overflow-hidden">
               <img
                 src={item.shops.profile_img_url || ''}
                 className="w-10 h-10 rounded-full border border-gray-200 object-cover shadow-sm shrink-0"
-                alt="logo"
+                alt={`${item.shops.name} 로고`}
               />
-              <div className="min-w-0 flex-1">
+              <div className="flex flex-col min-w-0">
                 <h3 className="font-black text-gray-900 leading-tight truncate">
                   {item.shops.name}
                 </h3>
-                <div className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 bg-orange-50 border border-orange-100 text-orange-600 rounded text-[10px] md:text-[11px] font-black tracking-tight whitespace-nowrap max-w-full">
+                <div className="inline-flex items-center gap-1 mt-0.5 px-1.5 py-0.5 bg-orange-50 border border-orange-100 text-orange-600 rounded text-[10px] md:text-[11px] font-black tracking-tight w-fit">
                   <Calendar size={12} strokeWidth={2.5} className="shrink-0" />
                   <span className="truncate">{dateDisplay}</span>
                 </div>
               </div>
             </div>
-            <div className="flex gap-2 items-center shrink-0">
-              <button
-                onClick={onClose}
-                className="w-8 h-8 flex items-center justify-center bg-gray-200 rounded-full text-gray-500 hover:bg-gray-300 transition-colors"
-              >
-                <X size={16} strokeWidth={2.5} />
-              </button>
-            </div>
-          </div>
+
+            <button
+              onClick={onClose}
+              className="w-8 h-8 shrink-0 flex items-center justify-center bg-gray-200 rounded-full text-gray-500 hover:bg-gray-300 transition-colors ml-2"
+              aria-label="닫기"
+            >
+              <X size={16} strokeWidth={2.5} />
+            </button>
+          </header>
 
           {/* 사진 영역 */}
           <div className="relative w-full flex-1 bg-gray-900 overflow-hidden border-b border-gray-100 min-h-0">
@@ -152,7 +144,6 @@ export const StoryViewerModal = ({
               className="absolute inset-0 w-full h-full object-contain drop-shadow-xl"
               alt="proof"
             />
-            {/* 사진 내부 투명 클릭 영역 (cursor-pointer 적용되어 있음) */}
             <div className="absolute inset-0 flex">
               <div
                 className="w-1/3 h-full cursor-pointer z-20"
@@ -165,9 +156,9 @@ export const StoryViewerModal = ({
             </div>
           </div>
 
-          {/* 하단 정보 영역*/}
-          <div className="h-[110px] md:h-37.5 flex flex-col shrink-0 bg-white pb-safe rounded-b-[24px]">
-            <div className="flex justify-between items-center px-5 pt-2 md:pt-4 shrink-0 gap-3 w-full">
+          {/* 하단 정보 영역 */}
+          <div className="h-[110px] flex flex-col shrink-0 bg-white pb-safe rounded-b-[24px]">
+            <div className="flex justify-between items-center px-5 pt-3 shrink-0 gap-3 w-full">
               {/* 왼쪽 뱃지 영역 */}
               <div className="flex-1 min-w-0 pr-1">
                 {item.status_type === 'normal' && item.menu_name && (
@@ -187,7 +178,7 @@ export const StoryViewerModal = ({
               </div>
 
               {/* 오른쪽 액션 버튼 영역 */}
-              <div className="flex items-end gap-2.5 shrink-0 pt-0.5">
+              <div className="flex items-center gap-3 shrink-0">
                 {item.source_url && (
                   <a
                     href={item.source_url}
@@ -212,10 +203,9 @@ export const StoryViewerModal = ({
 
                 <button
                   onClick={handleLikeToggle}
-                  className="relative flex items-end shrink-0 active:scale-95 transition-transform"
+                  className="relative flex items-center justify-center shrink-0 active:scale-95 transition-transform"
                 >
                   <RamenIcon isLiked={isLiked} />
-
                   {localLikeCount > 0 && (
                     <span
                       className={`absolute -top-1.5 -right-2 text-[10px] font-black tracking-tight ${isLiked ? 'text-orange-600' : 'text-gray-400'} leading-none bg-white px-0.5`}
@@ -228,7 +218,7 @@ export const StoryViewerModal = ({
             </div>
 
             {/* 상세 설명 텍스트 */}
-            <div className="flex-1 overflow-y-auto px-5 pb-4 mt-4 md:mt-5">
+            <div className="flex-1 overflow-y-auto px-5 pb-4 mt-3">
               <p className="text-gray-700 text-[13px] md:text-[14px] font-medium leading-[1.6] whitespace-pre-wrap break-keep">
                 {item.description || '상세 내용이 없습니다.'}
               </p>

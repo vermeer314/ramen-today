@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Home, Calendar, Plus, X } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import toast, { Toaster } from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
 import { useReportStore } from '../store/useReportStore';
 import { sendDiscordNotification } from '../lib/discord';
@@ -22,7 +23,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
 
   const handleSubmitReport = async () => {
     if (!reportForm.shop_name || !reportForm.source_url) {
-      alert('가게 이름과 링크를 모두 입력해주세요!');
+      toast.error('가게 이름과 링크를 모두 입력해주세요!');
       return;
     }
 
@@ -33,16 +34,14 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
 
       if (timeDiff < cooldown) {
         const remainSeconds = Math.ceil((cooldown - timeDiff) / 1000);
-        alert(
-          `무분별한 제보 방지를 위해 잠시 후 다시 시도해주세요. (${remainSeconds}초 후 가능)`,
-        );
+        toast.error(`잠시 후 다시 시도해주세요. (${remainSeconds}초 후 가능)`);
         return;
       }
     }
 
     const url = reportForm.source_url.trim();
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      alert(
+      toast.error(
         '링크는 http:// 또는 https:// 로 시작해야 합니다! (복사해서 붙여넣어 주세요)',
       );
       return;
@@ -50,6 +49,8 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
 
     const targetTable =
       reportForm.type === 'event' ? 'event_reports' : 'closing_reports';
+
+    const toastId = toast.loading('제보를 전송하는 중입니다...');
 
     try {
       const { error } = await supabase.from(targetTable).insert({
@@ -62,14 +63,14 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
       await sendDiscordNotification(reportForm.type, reportForm.shop_name, url);
 
       localStorage.setItem('last_report_time', Date.now().toString());
-      alert('성공적으로 제보되었습니다! 🍜');
+      toast.success('성공적으로 제보되었습니다! 🍜', { id: toastId });
       closeModal();
       setReportForm({ type: 'event', shop_name: '', source_url: '' });
     } catch (err) {
       if (err instanceof Error) {
-        alert(`제보 실패: ${err.message}`);
+        toast.error(`제보 실패: ${err.message}`, { id: toastId });
       } else {
-        alert('알 수 없는 오류가 발생했습니다.');
+        toast.error('알 수 없는 오류가 발생했습니다.', { id: toastId });
         console.error('Unexpected error:', err);
       }
     }
@@ -77,6 +78,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
 
   return (
     <div className="w-full h-[100dvh] bg-white md:bg-slate-100 relative flex items-center justify-center md:py-4 md:px-8 lg:py-6 lg:px-12 overflow-hidden">
+      <Toaster position="top-center" reverseOrder={false} />
       <div className="w-full max-w-md md:max-w-4xl lg:max-w-5xl h-full md:min-h-[700px] flex flex-col bg-slate-50 md:bg-white md:rounded-[32px] md:shadow-2xl md:border border-gray-200/60 overflow-hidden relative">
         <header className="bg-white border-b border-gray-100 shrink-0 z-10 relative">
           <div className="hidden md:flex absolute top-4 right-8 items-center gap-6 z-20">

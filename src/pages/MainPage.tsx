@@ -293,7 +293,7 @@ const UpcomingCard = ({
           {item.menu_name}
         </span>
       )}
-      <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed pointer-events-none">
+      <p className="text-xs text-gray-500 truncate leading-relaxed pointer-events-none">
         {item.description || '상세 내용이 없습니다.'}
       </p>
     </div>

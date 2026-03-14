@@ -5,6 +5,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
 import { useReportStore } from '../store/useReportStore';
 import { sendDiscordNotification } from '../lib/discord';
+import GuideTooltipWrapper from './GuideTooltipWrapper';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -146,17 +147,22 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
               홈
             </span>
           </button>
-          <button
-            onClick={openModal}
-            className="flex flex-col items-center -translate-y-3"
+          <GuideTooltipWrapper
+            message="알고 계신 라멘 소식을 공유해주세요!"
+            position="top"
           >
-            <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center shadow-md shadow-orange-500/20 border-[4px] border-slate-50">
-              <Plus size={22} color="white" strokeWidth={3} />
-            </div>
-            <span className="text-[10px] font-black text-orange-600 mt-1">
-              제보하기
-            </span>
-          </button>
+            <button
+              onClick={openModal}
+              className="flex flex-col items-center -translate-y-3"
+            >
+              <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center shadow-md shadow-orange-500/20 border-[4px] border-slate-50">
+                <Plus size={22} color="white" strokeWidth={3} />
+              </div>
+              <span className="text-[10px] font-black text-orange-600 mt-1">
+                제보하기
+              </span>
+            </button>
+          </GuideTooltipWrapper>
           <button
             onClick={() => navigate('/calendar')}
             className={`flex flex-col items-center gap-1 transition-colors ${

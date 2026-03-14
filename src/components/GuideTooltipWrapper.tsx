@@ -29,18 +29,18 @@ export default function GuideTooltipWrapper({
   const isTop = position === 'top';
 
   return (
-    <div className="relative flex flex-col items-center justify-center">
+    <div className="relative flex items-center justify-center">
       {isRendered && (
         <div
-          className={`absolute z-50 flex flex-col items-center pointer-events-none transition-opacity duration-300 ease-in-out ${
+          className={`absolute z-50 flex flex-col items-center pointer-events-none transition-opacity duration-300 ease-in-out drop-shadow-md ${
             isVisible ? 'opacity-100' : 'opacity-0'
-          } ${isTop ? 'bottom-full mb-2' : 'top-full mt-2'}`}
+          } ${isTop ? 'bottom-full mb-3' : 'top-full mt-3'}`}
         >
           {!isTop && (
             <div className="w-3 h-3 bg-orange-500 rotate-45 -mb-1.5" />
           )}
 
-          <div className="bg-orange-500 text-white text-xs sm:text-sm font-medium py-2 px-3 rounded-lg shadow-md whitespace-nowrap">
+          <div className="bg-orange-500 text-white text-xs sm:text-sm font-semibold py-2 px-3 rounded-lg whitespace-nowrap">
             {message}
           </div>
 
